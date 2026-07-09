@@ -1,0 +1,2159 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>운항승무원 자격관리 대시보드</title>
+  <style>
+    /* ═══════════════════════════════════════════════
+       AIR PREMIA · 운항승무원 자격관리 대시보드
+       Brand: Navy #0B3162 · Orange #E8410A
+    ═══════════════════════════════════════════════ */
+    :root {
+      --ap-navy:    #0B3162;
+      --ap-navy2:   #0D3870;
+      --ap-navy3:   #1A4480;
+      --ap-orange:  #E8410A;
+      --ap-orange2: #FF5A22;
+      --ap-sky:     #D6E8FA;
+      --ap-ice:     #F0F6FC;
+      --ap-line:    #D0DFF0;
+      --ap-muted:   #607B9A;
+      --ap-text:    #0B3162;
+
+      --warn-bg:  #FFF3EC; --warn-c:  #C04A10; --warn-b: #F9C09A;
+      --late-bg:  #FEF0EE; --late-c:  #B91C1C; --late-b: #FCA5A5;
+      --done-bg:  #EDFAF3; --done-c:  #065F46; --done-b: #6EE7B7;
+      --wait-bg:  #EFF6FF; --wait-c:  #1D4ED8; --wait-b: #BFDBFE;
+
+      --shadow-sm: 0 2px 8px rgba(12,35,64,.10);
+      --shadow-md: 0 8px 28px rgba(12,35,64,.14);
+      --shadow-lg: 0 16px 48px rgba(12,35,64,.18);
+      --radius: 10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+      font-size: 14px;
+      color: var(--ap-text);
+      background: var(--ap-ice);
+      min-height: 100vh;
+    }
+
+    body.locked header,
+    body.locked main,
+    body.locked .modal-overlay,
+    body.locked #toast {
+      display: none !important;
+    }
+
+    .lock-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: #0B3162;
+    }
+    body.locked .lock-screen { display: flex; }
+    .lock-panel {
+      width: min(100%, 380px);
+      padding: 28px;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow-lg);
+    }
+    .lock-panel h1 {
+      margin-bottom: 8px;
+      color: var(--ap-navy);
+      font-size: 22px;
+      line-height: 1.25;
+    }
+    .lock-panel p {
+      margin-bottom: 18px;
+      color: var(--ap-muted);
+      line-height: 1.5;
+    }
+    .lock-panel input {
+      width: 100%;
+      margin-bottom: 12px;
+    }
+    .lock-panel button {
+      width: 100%;
+      border-color: var(--ap-navy);
+      background: var(--ap-navy);
+      color: #fff;
+    }
+    .lock-error {
+      min-height: 20px;
+      margin-top: 10px;
+      color: #B91C1C;
+      font-size: 13px;
+    }
+
+    /* ── HEADER ────────────────────────────────── */
+    header {
+      background: var(--ap-navy);
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      box-shadow: 0 2px 16px rgba(12,35,64,.4);
+    }
+    .header-inner {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-family: "Barlow", sans-serif;
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: 0.06em;
+      color: #fff;
+      text-transform: uppercase;
+    }
+    .brand-logo .dot {
+      width: 10px; height: 10px;
+      background: var(--ap-orange);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .brand-divider {
+      width: 1px; height: 28px;
+      background: rgba(255,255,255,.2);
+    }
+    .brand-title {
+      display: flex;
+      flex-direction: column;
+    }
+    .brand-title .main {
+      font-family: "Barlow", sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 0.04em;
+      color: #fff;
+      line-height: 1.2;
+    }
+    .brand-title .sub {
+      font-size: 11px;
+      color: rgba(255,255,255,.55);
+      letter-spacing: 0.03em;
+      margin-top: 2px;
+      font-weight: 500;
+    }
+    #sourceInfo {
+      font-size: 11px;
+      color: rgba(255,255,255,.45);
+      font-weight: 400;
+    }
+
+    /* ── HEADER ACTIONS ─────────────────────────── */
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    button, .file-btn {
+      border: 1.5px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      color: rgba(255,255,255,.88);
+      border-radius: 6px;
+      padding: 7px 13px;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 12.5px;
+      letter-spacing: 0.02em;
+      transition: all .15s ease;
+      white-space: nowrap;
+    }
+    button:hover, .file-btn:hover {
+      background: rgba(255,255,255,.2);
+      border-color: rgba(255,255,255,.35);
+      transform: translateY(-1px);
+    }
+    button.primary, .file-btn.primary {
+      background: var(--ap-orange);
+      color: #fff;
+      border-color: var(--ap-orange2);
+    }
+    button.primary:hover { background: var(--ap-orange2); }
+    button.good {
+      background: rgba(232,65,10,.18);
+      color: #FF9070;
+      border-color: rgba(232,65,10,.3);
+    }
+    button.good:hover { background: var(--ap-orange); color: #fff; }
+    button.danger {
+      background: rgba(185,28,28,.12);
+      color: #FCA5A5;
+      border-color: rgba(185,28,28,.25);
+    }
+    button.danger:hover { background: rgba(185,28,28,.22); }
+    input[type="file"] { display: none; }
+
+    /* ── MAIN WRAP ──────────────────────────────── */
+    .wrap { max-width: 1480px; margin: 0 auto; padding: 20px 24px; }
+
+    /* ── KPI GRID ───────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .kpi {
+      background: #fff;
+      border: 1px solid var(--ap-line);
+      border-radius: var(--radius);
+      padding: 20px 20px 16px;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+      transition: box-shadow .2s;
+    }
+    .kpi:hover { box-shadow: var(--shadow-md); }
+    .kpi::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--ap-orange) 0%, var(--ap-orange2) 50%, #FFB09A 100%);
+    }
+    .kpi::after {
+      content: "";
+      position: absolute;
+      right: -16px; bottom: -16px;
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(12,35,64,.05) 0%, transparent 70%);
+    }
+    .kpi .label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ap-muted);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+    .kpi .value {
+      font-family: "Barlow", sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--ap-navy);
+      line-height: 1.1;
+      margin-top: 8px;
+    }
+    .kpi .note {
+      font-size: 11.5px;
+      color: var(--ap-muted);
+      margin-top: 5px;
+    }
+
+    /* ── FILTERS ────────────────────────────────── */
+    .filters {
+      background: #fff;
+      border: 1px solid var(--ap-line);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: 2fr repeat(5, minmax(130px, 1fr));
+      gap: 12px;
+      align-items: end;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ap-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    input[type="search"], input[type="text"], select, textarea {
+      width: 100%;
+      border: 1.5px solid var(--ap-line);
+      border-radius: 7px;
+      padding: 9px 11px;
+      font-family: inherit;
+      font-size: 13px;
+      background: var(--ap-ice);
+      color: var(--ap-text);
+      transition: border-color .15s, box-shadow .15s, background .15s;
+      appearance: none;
+    }
+    input[type="search"] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%23607B9A' stroke-width='2.2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 10px center; padding-left: 32px; }
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23607B9A' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--ap-navy3);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(12,35,64,.08);
+    }
+
+    /* ── SECTION ────────────────────────────────── */
+    .section {
+      background: #fff;
+      border: 1px solid var(--ap-line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+    .section-head {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--ap-line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      background: linear-gradient(90deg, #fff 0%, var(--ap-ice) 100%);
+    }
+    .section-head h2 {
+      font-family: "Barlow", sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--ap-navy);
+      letter-spacing: 0.02em;
+    }
+
+    /* ── TABS ───────────────────────────────────── */
+    .tabs { display: flex; gap: 5px; }
+    .tab {
+      padding: 6px 13px;
+      border-radius: 6px;
+      border: 1.5px solid var(--ap-line);
+      background: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12.5px;
+      color: var(--ap-muted);
+      transition: all .15s;
+    }
+    .tab:hover { border-color: var(--ap-navy3); color: var(--ap-navy); }
+    .tab.active {
+      background: var(--ap-navy);
+      color: #fff;
+      border-color: var(--ap-navy);
+    }
+
+    /* ── TABLE ──────────────────────────────────── */
+    .table-wrap { overflow: auto; max-height: calc(100vh - 340px); }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1560px; }
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: var(--ap-navy);
+      color: rgba(255,255,255,.82);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 11px 12px;
+      border-bottom: 2px solid var(--ap-navy3);
+      white-space: nowrap;
+    }
+    th:first-child { border-radius: 0; }
+    td {
+      border-bottom: 1px solid var(--ap-line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: middle;
+      font-size: 13px;
+      color: var(--ap-text);
+    }
+    tbody tr:hover td { background: var(--ap-ice); }
+    tbody tr:last-child td { border-bottom: none; }
+    .crew-name { min-width: 76px; white-space: nowrap; }
+
+    /* ── STATUS PILLS ───────────────────────────── */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 5px;
+      padding: 3px 9px;
+      font-size: 11.5px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      white-space: nowrap;
+      letter-spacing: 0.02em;
+    }
+    .pill::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: .7; }
+    .pill.need  { background: var(--warn-bg); color: var(--warn-c); border-color: var(--warn-b); }
+    .pill.late  { background: var(--late-bg); color: var(--late-c); border-color: var(--late-b); }
+    .pill.done  { background: var(--done-bg); color: var(--done-c); border-color: var(--done-b); }
+    .pill.wait  { background: var(--wait-bg); color: var(--wait-c); border-color: var(--wait-b); }
+
+    /* ── PROGRESS STEPS ─────────────────────────── */
+    .progress-steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(110px, 1fr));
+      gap: 5px;
+      min-width: 500px;
+    }
+    .progress-steps.steps-3 {
+      grid-template-columns: repeat(3, minmax(110px, 1fr));
+      min-width: 360px;
+    }
+    .progress-steps.steps-4 {
+      grid-template-columns: repeat(4, minmax(110px, 1fr));
+      min-width: 500px;
+    }
+    .progress-steps.steps-5 {
+      grid-template-columns: repeat(5, minmax(104px, 1fr));
+      min-width: 570px;
+    }
+    .step-check {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 34px;
+      padding: 6px 9px;
+      border: 1.5px solid var(--ap-line);
+      border-radius: 6px;
+      background: var(--ap-ice);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ap-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .12s;
+    }
+    .step-check:hover { border-color: var(--ap-navy3); color: var(--ap-navy); }
+    .step-check.done {
+      background: var(--done-bg);
+      border-color: var(--done-b);
+      color: var(--done-c);
+    }
+    .step-check input {
+      width: 15px; height: 15px;
+      accent-color: var(--ap-navy);
+      flex: 0 0 auto;
+    }
+
+    /* ── MISC ───────────────────────────────────── */
+    textarea { min-width: 180px; min-height: 40px; resize: vertical; font-size: 12.5px; }
+    .renewal-box {
+      display: grid;
+      grid-template-columns: 72px 134px;
+      gap: 6px 8px;
+      align-items: center;
+      min-width: 230px;
+      font-size: 12px;
+      color: var(--ap-muted);
+    }
+    .renewal-box input {
+      height: 32px;
+      padding: 5px 7px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .renewal-box button {
+      grid-column: 1 / -1;
+      min-height: 30px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .renewal-applied {
+      grid-column: 1 / -1;
+      font-size: 11px;
+      color: var(--done-c);
+      white-space: nowrap;
+    }
+    .renewal-warning {
+      grid-column: 1 / -1;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--late-c);
+      white-space: nowrap;
+    }
+    .due { font-weight: 700; color: var(--ap-navy); }
+    .small { font-size: 11.5px; color: var(--ap-muted); }
+    .empty { padding: 40px; text-align: center; color: var(--ap-muted); font-size: 14px; }
+    td button.danger { padding: 5px 10px; font-size: 12px; font-weight: 600; }
+
+    /* ── TOAST ──────────────────────────────────── */
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      background: var(--ap-navy);
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 8px;
+      border-left: 4px solid var(--ap-orange);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: .2s ease;
+      z-index: 100;
+      max-width: 360px;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: var(--shadow-md);
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ── MODAL (신규 입사자) ────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(12,35,64,.55);
+      z-index: 200;
+      overflow: auto;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.open { display: block; }
+    .modal-box {
+      background: #fff;
+      max-width: 660px;
+      margin: 48px auto 40px;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+    .modal-header {
+      background: var(--ap-navy);
+      padding: 20px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-header h2 {
+      font-family: "Barlow", sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.03em;
+    }
+    .modal-header .close-btn {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,.6);
+      font-size: 22px;
+      cursor: pointer;
+      padding: 2px 6px;
+      line-height: 1;
+      border-radius: 4px;
+      transition: color .12s;
+    }
+    .modal-header .close-btn:hover { color: #fff; background: rgba(255,255,255,.1); transform: none; }
+    .modal-body {
+      padding: 24px 28px 28px;
+    }
+    .modal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .modal-grid label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ap-muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .modal-grid input, .modal-grid select {
+      width: 100%;
+      border: 1.5px solid var(--ap-line);
+      border-radius: 7px;
+      padding: 9px 11px;
+      font-family: inherit;
+      font-size: 13px;
+      background: var(--ap-ice);
+    }
+    .modal-grid input:focus, .modal-grid select:focus {
+      outline: none;
+      border-color: var(--ap-navy3);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(12,35,64,.07);
+    }
+    .modal-footer {
+      padding: 16px 28px 24px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      border-top: 1px solid var(--ap-line);
+    }
+    .modal-btn-cancel {
+      background: #fff;
+      border: 1.5px solid var(--ap-line);
+      color: var(--ap-muted);
+      border-radius: 7px;
+      padding: 9px 22px;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .modal-btn-cancel:hover { border-color: var(--ap-navy3); color: var(--ap-navy); transform: none; background: #fff; }
+    .modal-btn-save {
+      background: var(--ap-navy);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 9px 28px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .modal-btn-save:hover { background: var(--ap-navy3); transform: none; }
+
+    /* ── RESPONSIVE ─────────────────────────────── */
+    @media (max-width: 1040px) {
+      .filters { grid-template-columns: 1fr 1fr 1fr; }
+      .grid    { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .header-inner { height: auto; padding: 12px 16px; flex-direction: column; align-items: flex-start; }
+      .filters, .grid { grid-template-columns: 1fr; }
+      .wrap { padding: 14px 16px; }
+    }
+  </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&family=Barlow:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+ const importBtn=document.getElementById('importCrewBtn');
+ const excelInput=document.getElementById('crewExcelInput');
+ if(importBtn&&excelInput){
+   importBtn.addEventListener('click',()=>excelInput.click());
+   excelInput.addEventListener('change',handleCrewExcelImport);
+ }
+});
+
+function excelDate(v){
+ if(!v) return '';
+ // cellDates:true 옵션 사용 시 Date 객체로 옴
+ if(v instanceof Date){
+   if(isNaN(v)) return '';
+   // 로컬 시간대 기준으로 변환 (UTC 변환 시 날짜 하루 밀림 방지)
+   const y=v.getFullYear();
+   const m=String(v.getMonth()+1).padStart(2,'0');
+   const d=String(v.getDate()).padStart(2,'0');
+   return `${y}-${m}-${d}`;
+ }
+ // 숫자 직렬번호 fallback (cellDates 미지원 환경)
+ if(typeof v==='number'){
+   const d=XLSX.SSF.parse_date_code(v);
+   return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+ }
+ const s=String(v).trim();
+ if(!s || s==='-') return '';
+ if(s.toUpperCase()==='LIFE'||s.includes('영구')) return '영구';
+ // 문자열 날짜 (예: "01-jul-25", "2025-07-01") 처리
+ const dt=new Date(s);
+ if(!isNaN(dt)) return dt.toISOString().slice(0,10);
+ return s;
+}
+
+function handleCrewExcelImport(e){
+ const file=e.target.files[0];
+ if(!file) return;
+ const reader=new FileReader();
+ reader.onload=(ev)=>{
+   const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});
+   const ws=wb.Sheets[wb.SheetNames[0]];
+   const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+   const dataRows=rows.slice(2).filter(r=>r && r[1] && r[2]);
+
+   let imported=0;
+   dataRows.forEach(r=>{
+      const empNo=String(r[2]||'').trim();
+      const licenseRaw=String(r[14]||'').trim().toUpperCase();
+      const licenseType=licenseRaw==='ATPL'?'운송용':'사업용';
+      const crew={
+        role:'부기장',
+        name:r[1]||'',
+        empNo,
+        passportNo:r[8]||'',
+        lastNameEn:String(r[9]||'').split(' ')[0]||'',
+        firstNameEn:String(r[9]||'').split(' ').slice(1).join(' '),
+        passportIssued:excelDate(r[10]),
+        passport:excelDate(r[11]),
+        licenseNo:r[12]||'',
+        licenseIssued:excelDate(r[13]),
+        licenseType,
+        eptaGrade:r[17]||'',
+        epta:excelDate(r[16]),
+        medicalIssued:excelDate(r[18]),
+        medical:excelDate(r[19]),
+        radioIssued:excelDate(r[20]),
+        radio:excelDate(r[21]),
+        usVisaIssued:excelDate(r[22]),
+        usVisa:excelDate(r[23])
+      };
+
+      const idx=(state?.crew||[]).findIndex(x=>String(x.empNo)===empNo);
+      if(idx>=0){
+        state.crew[idx]={...state.crew[idx],...crew};
+      }else{
+        state.crew.push(crew);
+      }
+      imported++;
+   });
+
+   if(typeof saveStore==='function') saveStore();
+   if(typeof render==='function') render();
+   if(typeof toast==='function') toast(`${imported}명 신규/수정 반영 완료`);
+ };
+ reader.readAsArrayBuffer(file);
+}
+
+</script>
+</head>
+<body class="locked">
+  <div id="lockScreen" class="lock-screen">
+    <form id="lockForm" class="lock-panel" autocomplete="off">
+      <h1>AIR PREMIA</h1>
+      <p>Enter the shared password to open the crew qualification dashboard.</p>
+      <input id="lockPassword" type="password" placeholder="Password" autocomplete="current-password" autofocus>
+      <button type="submit">Unlock</button>
+      <div id="lockError" class="lock-error" aria-live="polite"></div>
+    </form>
+  </div>
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo">
+          <img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAwANwDASIAAhEBAxEB/8QAHAAAAgIDAQEAAAAAAAAAAAAAAAYFBwMECAEC/8QAPBAAAQIFAwIDBAYIBwAAAAAAAQIDAAQFBhEHEiETMQgUQSJRYYEVOHF1obMyMzdCdJGxshYmNlJydoL/xAAbAQACAwEBAQAAAAAAAAAAAAAAAQIDBAcGBf/EAC0RAAICAgECAwYHAQAAAAAAAAECABEDEiEEMVFxgQUTQWGR0QYVIiMyofBy/9oADAMBAAIRAxEAPwDneCCCPZTzUIIySzD0y+hiXaW66s4ShAySYn37JuRqU8wZDdxktocSpY+QPPyjNn6zp+nYLlcKT2sgTZ03s/q+qVmwYmYDvQJr6Rcgj1QKVFKgQQcEH0jcodJqdcqjNLo8hMT06+ra2ywgqUo/YPT49hGixVzJRuppQRY9e0N1UodGdq9QtJ8SrKN7pYmGXloT6kobWVYA5JA4HfEIVJkJyq1WUpdPYL85OPoYl2gQCtxaglKcnjkkDmIrkRxam42RlNETVgiVuq3qza1beotfkVyNQZCVOMqUlRSFJChykkcgg94ZbK0h1FvGmJqlAtmYfkVkhEw662whzHqguKTuGeMpyM5HoYDkRV2J4gEYmgOYiwRLXVbddtWqqpdw0uZps4kbuk8nGU+8HsRx3HERMSBBFiIgjgwgiw7d0S1Rr1GRV6daUyZNxvqNKfeaZU4n0KULUFEEcg4wR27iEmuUmpUOqv0qryT8jOy6trrDydqkmIrkRjQNxlGUWRNKCHaxdKdQL2kFVC3LcfmpJJIEw44hltZGQQlTikheCCDtzg98RC3naNyWbVvou5qRMU2aKdyUuYKVp96VpJSoemQTzAMiFtQeYFGA2riQcETVn2pcV31X6LtqkzNSmwnepDQGEJ7blKOEpGSBkkd4nL40o1BsunpqFxW3MS0mcbn23EPNoJ9FKbUoJ93OIDkQNqTzAIxFgcRJgjLKy8xNzLcrKsOvvuqCG2m0FS1qPYADkn4RY0zoPqzLUo1J2z5nohJWUImGVuhIGf1YWVfLGc8YgbIifyNQVGbsLlaQQ82TpJqHedONSt+235iSCygPuvNsJUR3CeopO73ZGRn7DC9d1sV+0quqk3HSpimzgTuDboHtJyRuSRkKHB5BI4gGRC2oPMCjAWRxIeCJ9mzblest68m6WtVBYdDTk51EbUr3JTjbndnKk+nrGnbNArNzVhqkUGmzFQnnc7GWU5OB3J9AB6k4Ah7rRN9oanwkZBFg3XotqbbFIXVqva0wiTbSVOuMPNP9IDuVBtSiB8e3xivoSOri1NwZWXhhUIIIInIwgggghHvRyXaXVp2ZUkFbTISgkdtx5P4fiYtCKu0dmmmqvOSq1YW+0Cj47TyP5HPyi0Y5H+LtvzN9u1CvKvvc71+A9PyVNe9tfnf2qUvqTLtS14TYaSEhwJcIH+4pGf5nn5xc3hlfNr6PajX7INNGsSrAl5V1aQS17O7IyORuUlRHY7BFMajzTU3d02plQUlva2SPUpAB/HI+UdA+FN2gM6F30u6d30IZnZPFKSohtTSUkgDnjOeOY6D02w9mYd+9Lf8AU5H7U0PtbqPd9tnrw7mI2gGqN8nWOjsVG5apUpWrTiZebYmphTqFBfAISokJIOCNuOBjtxHlxUaToHjFk6ZT2UMyqLokHG20DCUBxxpzAHoAVniLF0qtrQW2tRKXVKPfM3Xam9NJapUmpBIQ44dqSragcgE8qwB7s4hM1H+u3K/9ipX9JeNAdWytqKGvhU+eVIxjY3z5zU8SNPaq3incpb5KWpyZp8u4R3CVttJP4GGDxbX1c1v35I2hbNYnqDSKXTmekzTphTG4nOMlBBwEhICSSBjI7xF67fXBlfvGl/2sxZuuuutR081NVQ5e2KVUWmpdp7rulSXvaHIChnH8ogNv2qXb9Pb6SRr9yzXMTddpioVvwvWVXr0QUXQqd2trca2uutEO8qHGNyEtLJ9SB2zFOaGUiTrur1s0uoMpelXZ9CnW1forSnK9p94O3BHqDFzeJtym6h6QW1qxT5ibZUHPJuSK3CptsqKgvAPZQWgDI/SGPcIqrw0/t0tT+LP5a4uwGunY9jz6fKV5ReZfT1jl4h9T79RrVU6dRrhqtOlqXMol5OVkn1ISogJ5UlOA4VKJ4UDwdvaJnxeS7k1bmm9TrjCJa6J2nlFRSEEKBCGiQoZ42rWrj4nniJvVXxFXBaOoVdoNMtmgOLkZkstzT6HCtQwDlQSoZ7+8RzxeF31++LuFeuOd81OOKQhOEBCGmwfZQlI7JGT8TkkkkkxHp8THRtQAB9eI8uRRst2T/Uvjxb3bXrIqtu2DaFSm6FR5SkNvASLymXHMrcbCVKSQSAG849Sok54x86hzdUuPwe0yt3xvVWmaigU6YmEAPPoKikEkgHlvcc/vBCVc94efEbrRUNOL7kaNKW3Samh6mtzZemgrqJJddTtBHp7AP2kwoa91KQ1Z8P8AT9TJQzUhMUiaLExIF7e0lS1pQr0AJ5QQoAeyog/CjFeuO1oX3/3jLslW9G+O3+8Jm0jkLnp3hRfnNPJBbtyVioLS49LpSHkNpWUEhRI7JSce4rJHPML9uXtf+mklPUvWWk1+r0CuSzjDLM5MIfX1ON+FLUTjao5GcZwcd4ndLZ+6J/wmOyunk5Mt3DSKisvNSuC8tsrKyEj1ylecdztIELNo2ZfeqcpUKlqxXK9S7eocs4+3NTrAQQ5xv2hYGQEpVk+hAETFbP7yqv1+VSHNLpd16fOYvBRTqe9qTV61MMB5VJpbj0qFjlClKSncPcrZuT/6MLdl6zahuapU2rztyz803Mz6EPSS3leVLbiwFIS1nakYPGORgQ2+CbH+I7v2ggfQqsAnP74ij7O/1dRv49j8xMaNFfLk2F8CU7FcaUfiZ0P4yNRLupWoEpbdDrs/SZKWkm5hXkn1MrdcWpXKlJIJAATgds5MaepNRfvrwlUO7bgxMVunVIy6Zv8AfcSVqQd32gIJ+Kc8Zhe8bH7a1fdkv/VcSr/1G2Pvs/mqilEVcWIgc2JazE5MgPgZkov1GK598J/PYjNoPMO2b4ab8v8ApQQitKmRJMvlIKmkjpJBGQeyn1Kx2JSnMYaL9RiuffCfz2IZvDuq1h4V7mF6qWmgLqriJxSEqUpAUmXSlQCQTkLKSMA9oi5pG+P6/tGgtl/5iV4ZdS73m9YaZR6rclSqshVVONzLE9MreTw2tQUncTtIIHbgjj3YrDV+mStG1TuemSTSWpWXqj6GW05whG8lKRn3AgfKOitELZ0QtvUemzNDvaYuSuTKlopbCmiEs5bVuUrCQN23cMqIxntnBFB6+ftou771e/ui/C6t1B1FCvCvjKsqkYRsb584jwQQRvmSEEEEEJ9sPOsPIeYcW04g5StCsEH4GJuYvG435Tyy6m4EYwVJSlKiP+QGYgYIz5ukwZyGyoGI7WAamvp+u6nplZcORlB70SL86gSSSSck9zDDRb1uajWrU7WptT6FIqpzOy/QbV1TgD9JSSpPAHYiF6CLioPBEygkcibtBqs/Qq1J1mlP+XnpJ5L0u7sSrYtJyDhQIPPoQYkqjeNx1G90XrOVHq15Ew1Mpmug2MOtbditgSEcbE8Ywcc5iAggKqTZENiBUn69eVyV28E3dVKj162hxp1Mz0G04U1jYdiUhPG0enOOcxivS6q/eVcVW7kn/PT6m0tl3oobylPYYQkD8IhYIAiiqHaMsT3MYXb1uZ2xmrIcqebfZf67cp0G+HMk537d/dR43Y5iPtquVS267KVyizXlahKL3sPdNK9isEZ2qBB4J7iI6CDRaIrvDY3dyQuOs1K4q5N1usTPmZ+cc6j7uxKN6vfhIAHyEaCFKQtK0nCknIPxjyCGAAKERN8xgvu87lvmrtVa6al9ITrMuJdDnQbaw2FKUE4bSkd1qOcZ5j2WvW5pexpmyGantt+afD70p0GzucBSc7yneOUJ4CscQvQRHRaArgR7Nd3GGxr1uiyKmuoWvWH6c84Al0JAU26B2C0KBSrGTjI4ycRPX3rHqJetKNKrlfWqnqILkvLtIZQ5jtv2AFQ9cEkZAOMiECCEcSFtiBcYyMBqDxGGyL1uaypmbmLZqfkHZxjoTCug25vbznHtpOPtGDEHJzL0nOMzcsvY8w4lxtWAdqknIODx3EYoIlqLJrvI2e0nL2u24L0rf01ctQ8/P9JLXV6LbfsJzgYQkD1PpGVV63Mqxk2Qan/l9L/XEp0G/wBZnOd+3f3PbdiF6CFotAV2j2aybjExe9zs2I/Y7VSCbffeD7sp0GzuWFJVnft3jlKeAccQSF73RI2PO2TK1Pp0Cee60zKdBs715Qc7yneOW0diO3xMLsEHu18Pn6w3bxkla9eqts16VrtDmvKVGUUVMPdNK9hKSk+yoFJ4J7iMdfq1Qr1anKzVpjzE9OOqemHdiUb1nucJAA+QEaMEPUXdcxWaqEEEESin/9k=" alt="AIR PREMIA" style="height:36px;display:block;">
+        </div>
+        <div class="brand-divider"></div>
+        <div class="brand-title">
+          <span class="main">운항승무원 자격관리</span>
+          <span id="sourceInfo" class="sub">기본 명단 · 안내 대상 누적 관리</span>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="addCrewBtn" class="good">＋ 신규 입사자</button>
+        <button id="importCrewBtn" class="primary">엑셀 신규직원 반영</button><input id="crewExcelInput" type="file" accept=".xlsx,.xls" style="display:none;"><button id="editQualBtn" class="primary">＋ 기존 직원 자격</button>
+        <button id="xlsxBtn" class="primary">엑셀 다운로드</button>
+        <button id="backupBtn">백업 JSON</button>
+        <label class="file-btn" for="restoreInput">백업 복원</label>
+        <input id="restoreInput" type="file" accept=".json" />
+        <button id="csvBtn">CSV 내보내기</button>
+        <button id="resetBtn" class="danger">초기화</button>
+        <button id="logoutBtn">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="grid" id="kpis"></section>
+
+    <section class="filters">
+      <div>
+        <label for="search">검색</label>
+        <input id="search" type="search" placeholder="이름, 사번, 자격 검색" />
+      </div>
+      <div>
+        <label for="roleFilter">직위</label>
+        <select id="roleFilter"><option value="">전체</option><option>기장</option><option>부기장</option></select>
+      </div>
+      <div>
+        <label for="certFilter">자격</label>
+        <select id="certFilter"><option value="">전체</option></select>
+      </div>
+      <div>
+        <label for="statusFilter">처리 상태</label>
+        <select id="statusFilter">
+          <option value="unprocessed" selected>미처리건만</option>
+          <option value="all">전체</option>
+          <option value="done">갱신 완료만</option>
+        </select>
+      </div>
+      <div>
+        <label for="monthFilter">안내 보기</label>
+        <select id="monthFilter">
+          <option value="currentPlusOverdue" selected>이번달 + 이전 미처리</option>
+          <option value="overdue">이전 미처리만</option>
+          <option value="all">전체</option>
+        </select>
+      </div>
+      <div>
+        <label for="horizon">기간 범위</label>
+        <select id="horizon">
+          <option value="9999">전체 기간</option>
+          <option value="30">30일 이내</option>
+          <option value="60">60일 이내</option>
+          <option value="90">90일 이내</option>
+          <option value="180">180일 이내</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 id="tableTitle">갱신 안내 대상</h2>
+        <div class="tabs">
+          <button class="tab active" data-sort="notice">안내일순</button>
+          <button class="tab" data-sort="due">만료일순</button>
+          <button class="tab" data-sort="name">이름순</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>상태</th>
+              <th>직위</th>
+              <th>이름</th>
+              <th>사번</th>
+              <th>자격</th>
+              <th>안내 기준</th>
+              <th>안내일</th>
+              <th>만료/갱신일</th>
+              <th>진행 단계</th>
+              <th>갱신 입력</th>
+              <th>비고</th>
+              <th>삭제</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- 신규 입사자 추가 모달 -->
+  <div id="addCrewModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>신규 입사자 추가</h2>
+        <button class="close-btn" id="cancelCrewBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-grid">
+          <div><label>직위 *</label><select id="nw_role"><option value="기장">기장</option><option value="부기장">부기장</option></select></div>
+          <div><label>이름 *</label><input id="nw_name" type="text" placeholder="홍길동"></div>
+          <div><label>사번 *</label><input id="nw_empNo" type="text" placeholder="P260001"></div>
+          <div><label>여권번호</label><input id="nw_passportNo" type="text"></div>
+          <div><label>영문성</label><input id="nw_lastNameEn" type="text" placeholder="HONG"></div>
+          <div><label>영문이름</label><input id="nw_firstNameEn" type="text" placeholder="GIL DONG"></div>
+          <div><label>여권 발급일</label><input id="nw_passportIssued" type="date"></div>
+          <div><label>여권 만료일</label><input id="nw_passport" type="date"></div>
+          <div><label>미국비자 C1/D</label><select id="nw_usVisaCD"><option value="O">O</option><option value="X">X</option></select></div>
+          <div><label>미국비자 B1/B2</label><select id="nw_usVisaB1B2"><option value="O">O</option><option value="X">X</option><option value="-">-</option></select></div>
+          <div><label>미국비자 발급일</label><input id="nw_usVisaIssued" type="date"></div>
+          <div><label>미국비자 만료일</label><input id="nw_usVisa" type="date"></div>
+          <div><label>자격증 종류</label><select id="nw_licenseType"><option value="운송용">운송용</option><option value="사업용">사업용</option></select></div>
+          <div><label>자격증 번호</label><input id="nw_licenseNo" type="text"></div>
+          <div><label>한정자격 (B787)</label><input id="nw_limitB787" type="text" placeholder="B787"></div>
+          <div><label>한정자격 (기타)</label><input id="nw_limitOther" type="text" placeholder="B737, C525"></div>
+          <div><label>EPTA 등급</label><input id="nw_eptaGrade" type="text" placeholder="4"></div>
+          <div><label>EPTA 만료일</label><input id="nw_epta" type="date"></div>
+          <div><label>신체검사 발급일</label><input id="nw_medicalIssued" type="date"></div>
+          <div><label>신체검사 만료일</label><input id="nw_medical" type="date"></div>
+          <div><label>무선통신사 발급일</label><input id="nw_radioIssued" type="date"></div>
+          <div><label>무선통신사 만료일</label><input id="nw_radio" type="date"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-cancel" id="cancelCrewBtn2">취소</button>
+        <button class="modal-btn-save" id="saveCrewBtn">추가 완료</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 기존 직원 자격 추가/수정 모달 -->
+  <div id="editQualModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>기존 직원 자격 추가/수정</h2>
+        <button class="close-btn" id="cancelQualBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-grid">
+          <div style="grid-column: 1 / -1;">
+            <label>직원 검색</label>
+            <input id="eq_crewSearch" type="search" placeholder="이름 또는 사번 검색">
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <label>직원 선택 *</label>
+            <select id="eq_crew"></select>
+          </div>
+          <div>
+            <label>자격 *</label>
+            <select id="eq_cert"></select>
+          </div>
+          <div>
+            <label>현재 만료일</label>
+            <input id="eq_currentExpiry" type="text" readonly>
+          </div>
+          <div>
+            <label>발급/갱신일</label>
+            <input id="eq_issued" type="date">
+          </div>
+          <div>
+            <label>새 만료일 *</label>
+            <input id="eq_expiry" type="date">
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <label>비고</label>
+            <input id="eq_note" type="text" placeholder="예: 보직 변경으로 자격 추가, 서류 확인 완료">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-cancel" id="cancelQualBtn2">취소</button>
+        <button class="modal-btn-save" id="saveQualBtn">저장</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const STORE_KEY = "yp-qualification-dashboard-v2";
+    const AUTH_KEY = "yp-qualification-dashboard-auth-v1";
+    const PASSWORD_HASH = "9c73f28c41e5592f7d9890e8586ea8f219009273171117a4dc2c5e9da7b8de61";
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyBaki7dtYU34uA-goO1J1gLl82KMsJfI04",
+      authDomain: "flightcrew-qualification-mgr.firebaseapp.com",
+      projectId: "flightcrew-qualification-mgr",
+      storageBucket: "flightcrew-qualification-mgr.firebasestorage.app",
+      messagingSenderId: "324472253381",
+      appId: "1:324472253381:web:c28e141500bd4b16edf9ac"
+    };
+    const FIRESTORE_DOC_PATH = "dashboards/qualification_airpremia";
+    let firestoreDb = null;
+    let isApplyingRemoteStore = false;
+    const CERTS = [
+      { key: "medical", label: "항공신체검사증명", dueCol: 22, noticeMonthsBefore: 1, noticeDay: 20, guide: "만료월 전월 20일 안내", needsSchedule: true, needsRefund: false },
+      { key: "epta", label: "항공영어구술능력(EPTA)", dueCol: 19, noticeMonthsBefore: 6, noticeDay: 1, guide: "만료월 6개월 전달 1일 안내", needsSchedule: false, needsRefund: true },
+      { key: "radio", label: "항공무선통신사", dueCol: 24, noticeMonthsBefore: 3, noticeDay: 1, guide: "만료월 3개월전월 1일 안내", needsSchedule: false, needsRefund: false },
+      { key: "passport", label: "여권", dueCol: 8, noticeMonthsBefore: 8, noticeDay: 20, guide: "만료월 8개월 전달 20일 안내", needsSchedule: false, needsRefund: false },
+      { key: "usVisa", label: "미국비자", dueCol: 12, noticeMonthsBefore: 8, noticeDay: 20, guide: "만료월 8개월 전 20일 안내", needsSchedule: true, needsRefund: true }
+    ];
+
+    const BUILTIN_CREW_DATA = [{"role":"기장","name":"박규태","empNo":"P213004","passportNo":"M16291439","lastNameEn":"PARK","firstNameEn":"GYOTAE","passportIssued":"2025-01-13","passport":"2035-01-13","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-07-22","usVisa":"2032-07-20","licenseType":"운송용","licenseNo":"11-004035","licenseIssued":"2021-11-17","limitB787":"B787","limitOther":"B737, DHC8","eptaGrade":"4","epta":"2029-03-04","eptaPeriod":"1년","medicalIssued":"2025-06-10","medical":"2026-06-30","radioIssued":"2026-02-25","radio":"2031-02-24"},{"role":"기장","name":"위충석","empNo":"P203001","passportNo":"M531F3457","lastNameEn":"WI","firstNameEn":"CHOONG SEOK","passportIssued":"2022-06-02","passport":"2032-06-02","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-08-02","usVisa":"2032-07-31","licenseType":"운송용","licenseNo":"11-004820","licenseIssued":"2022-12-23","limitB787":"B787","limitOther":"A320, B737, B777, CE500/CE560","eptaGrade":"4","epta":"2029-01-19","eptaPeriod":"1년","medicalIssued":"2026-03-12","medical":"2027-03-31","radioIssued":"2025-03-07","radio":"2030-03-06"},{"role":"기장","name":"유우룡","empNo":"P203005","passportNo":"M673N3190","lastNameEn":"YOO","firstNameEn":"WOO RYONG","passportIssued":"2026-02-23","passport":"2036-02-23","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"보유","usVisa":"2031-06-01","licenseType":"운송용","licenseNo":"11-001927","licenseIssued":"2022-12-21","limitB787":"B787","limitOther":"A330, A380, B777, MD80","eptaGrade":"4","epta":"2029-02-23","eptaPeriod":"6개월","medicalIssued":"2026-03-11","medical":"2026-09-30","radioIssued":"2025-01-03","radio":"2030-01-02"},{"role":"기장","name":"김동섭","empNo":"P203018","passportNo":"M36033260","lastNameEn":"KIM","firstNameEn":"DONG SUP","passportIssued":"2020-05-11","passport":"2030-05-11","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2021-06-03","usVisa":"2031-06-01","licenseType":"운송용","licenseNo":"11-004351","licenseIssued":"2023-01-02","limitB787":"B787","limitOther":"A310/300-600, B737, B777","eptaGrade":"4","epta":"2029-02-04","eptaPeriod":"1년","medicalIssued":"2026-02-10","medical":"2027-02-28","radioIssued":"2021-08-24","radio":"2026-08-23"},{"role":"기장","name":"김영필","empNo":"P203006","passportNo":"M932G8090","lastNameEn":"KIM","firstNameEn":"YOUNGPIL","passportIssued":"2025-03-13","passport":"2035-03-13","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2020-08-21","usVisa":"2030-08-19","licenseType":"운송용","licenseNo":"11-004844","licenseIssued":"2022-10-27","limitB787":"B787","limitOther":"A330, B737, B747-400, CE500/CE560","eptaGrade":"4","epta":"2028-12-11","eptaPeriod":"1년","medicalIssued":"2026-04-22","medical":"2027-04-30","radioIssued":"2025-06-23","radio":"2030-06-22"},{"role":"기장","name":"강달용","empNo":"P213011","passportNo":"M169M2851","lastNameEn":"KANG","firstNameEn":"DAL YONG","passportIssued":"2025-10-24","passport":"2035-10-24","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-09-08","usVisa":"2032-09-06","licenseType":"운송용","licenseNo":"11-004485","licenseIssued":"2023-02-10","limitB787":"B787","limitOther":"B737, B777, CE500/CE560","eptaGrade":"4","epta":"2029-05-04","eptaPeriod":"1년","medicalIssued":"2025-06-23","medical":"2026-06-30","radioIssued":"2022-06-07","radio":"2027-06-06"},{"role":"기장","name":"신지수","empNo":"P203004","passportNo":"M05925038","lastNameEn":"SHIN","firstNameEn":"JISU","passportIssued":"2017-07-31","passport":"2027-07-31","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2017-03-29","usVisa":"2027-03-26","licenseType":"운송용","licenseNo":"11-002967","licenseIssued":"2023-04-07","limitB787":"B787","limitOther":"A330, A380, MD11","eptaGrade":"4","epta":"2029-06-09","eptaPeriod":"1년","medicalIssued":"2026-04-14","medical":"2027-04-30","radioIssued":"2025-04-01","radio":"2030-03-31"},{"role":"기장","name":"정재훈","empNo":"P213007","passportNo":"M722V1438","lastNameEn":"JEONG","firstNameEn":"JAE HOON","passportIssued":"2025-04-10","passport":"2035-04-10","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-05-04","usVisa":"2032-05-02","licenseType":"운송용","licenseNo":"11-001943","licenseIssued":"2021-01-28","limitB787":"B787","limitOther":"A300, B737, B747-400, B777","eptaGrade":"4","epta":"2027-01-25","eptaPeriod":"1년","medicalIssued":"2025-10-15","medical":"2026-10-31","radioIssued":"2024-01-24","radio":"2029-01-23"},{"role":"기장","name":"김진환","empNo":"P203022","passportNo":"M06595622","lastNameEn":"KIM","firstNameEn":"JIN HWAN","passportIssued":"2020-04-20","passport":"2030-04-20","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-09-19","usVisa":"2032-09-15","licenseType":"운송용","licenseNo":"11-005881","licenseIssued":"2020-10-07","limitB787":"B787","limitOther":"B737","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-11-17","medical":"2026-11-30","radioIssued":"2024-11-11","radio":"2029-11-10"},{"role":"기장","name":"전지혁","empNo":"P203011","passportNo":"M064Q6162","lastNameEn":"JUN","firstNameEn":"JI HYEK","passportIssued":"2024-12-23","passport":"2034-12-23","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-09-20","usVisa":"2032-09-18","licenseType":"운송용","licenseNo":"11-003745","licenseIssued":"2021-10-25","limitB787":"B787","limitOther":"A320, B737, B747-400, GS-IV","eptaGrade":"4","epta":"2028-02-18","eptaPeriod":"1년","medicalIssued":"2026-04-03","medical":"2027-04-30","radioIssued":"2025-03-20","radio":"2030-03-19"},{"role":"기장","name":"박일호","empNo":"P213014","passportNo":"M784S6712","lastNameEn":"PARK","firstNameEn":"IL HO","passportIssued":"2022-03-15","passport":"2032-03-15","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-09-07","usVisa":"2032-09-06","licenseType":"운송용","licenseNo":"11-007216","licenseIssued":"2022-08-16","limitB787":"B787","limitOther":"A320","eptaGrade":"4","epta":"2028-10-30","eptaPeriod":"1년","medicalIssued":"2025-06-24","medical":"2026-06-30","radioIssued":"2025-06-29","radio":"2030-06-28"},{"role":"기장","name":"김동환","empNo":"P213002","passportNo":"M102G6248","lastNameEn":"KIM","firstNameEn":"DONG HWAN","passportIssued":"2026-03-10","passport":"2036-03-10","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-01-20","usVisa":"2032-01-18","licenseType":"운송용","licenseNo":"11-001788","licenseIssued":"2021-06-21","limitB787":"B787","limitOther":"B727, B737, B747, B777, B787","eptaGrade":"4","epta":"2027-06-16","eptaPeriod":"6개월","medicalIssued":"2025-12-15","medical":"2026-06-30","radioIssued":"2025-12-06","radio":"2030-12-05"},{"role":"기장","name":"김남호","empNo":"P243041","passportNo":"M66234587","lastNameEn":"KIM","firstNameEn":"NAM HO","passportIssued":"2017-10-24","passport":"2027-10-24","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2018-03-09","usVisa":"2028-03-08","licenseType":"운송용","licenseNo":"11-005272","licenseIssued":"2017-02-27","limitB787":"B787","limitOther":"A320, A330, B737, CE500/CE560","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2026-03-05","medical":"2027-03-31","radioIssued":"2025-03-17","radio":"2030-03-16"},{"role":"기장","name":"정호영","empNo":"P213008","passportNo":"M587B4401","lastNameEn":"JUNG","firstNameEn":"HO YONG","passportIssued":"2025-03-05","passport":"2035-03-05","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-05-11","usVisa":"2032-05-09","licenseType":"운송용","licenseNo":"11-001775","licenseIssued":"2021-11-19","limitB787":"B787","limitOther":"A330, B747-400, B777, F70/F100","eptaGrade":"4","epta":"2027-10-24","eptaPeriod":"6개월","medicalIssued":"2025-12-26","medical":"2026-06-30","radioIssued":"2026-04-13","radio":"2031-04-12"},{"role":"기장","name":"한정권","empNo":"P213010","passportNo":"M70704555","lastNameEn":"HAN","firstNameEn":"JUNG KWEON","passportIssued":"2017-09-04","passport":"2027-09-04","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-05-02","usVisa":"2032-04-28","licenseType":"운송용","licenseNo":"11-002058","licenseIssued":"2021-01-28","limitB787":"B787","limitOther":"A300, B737, B747-400, B777, CE500/CE560, MD80","eptaGrade":"4","epta":"2027-03-03","eptaPeriod":"1년","medicalIssued":"2025-10-02","medical":"2026-10-31","radioIssued":"2021-06-14","radio":"2031-03-05"},{"role":"기장","name":"정희중","empNo":"P213009","passportNo":"M428M5900","lastNameEn":"JUNG","firstNameEn":"HEE JOONG","passportIssued":"2022-10-04","passport":"2032-10-04","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-06-09","usVisa":"2032-06-07","licenseType":"운송용","licenseNo":"11-004301","licenseIssued":"2021-11-17","limitB787":"B787","limitOther":"B737, CE500/CE560, DHC8, GS-VI","eptaGrade":"4","epta":"2026-10-24","eptaPeriod":"1년","medicalIssued":"2026-01-07","medical":"2027-01-31","radioIssued":"2022-07-20","radio":"2027-07-19"},{"role":"기장","name":"윤태선","empNo":"P223008","passportNo":"M62725137","lastNameEn":"YUN","firstNameEn":"TAE SUN","passportIssued":"2019-07-09","passport":"2029-07-09","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2020-02-11","usVisa":"2030-02-06","licenseType":"운송용","licenseNo":"11-002283","licenseIssued":"2022-11-11","limitB787":"B787","limitOther":"A330, B737, MD80","eptaGrade":"4","epta":"2028-01-28","eptaPeriod":"1년","medicalIssued":"2026-03-25","medical":"2026-09-30","radioIssued":"2022-07-25","radio":"2027-07-24"},{"role":"기장","name":"이병욱","empNo":"P203010","passportNo":"M89492303","lastNameEn":"YI","firstNameEn":"BYONG WOOK","passportIssued":"2018-02-22","passport":"2028-02-22","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2021-06-08","usVisa":"2031-06-07","licenseType":"운송용","licenseNo":"11-001915","licenseIssued":"2022-07-18","limitB787":"B787","limitOther":"A300, A310/300-600, A320, B727, B747-400, B777","eptaGrade":"4","epta":"2028-11-27","eptaPeriod":"6개월","medicalIssued":"2026-04-23","medical":"2026-10-31","radioIssued":"2022-08-30","radio":"2027-08-29"},{"role":"기장","name":"조성식","empNo":"P203009","passportNo":"M67402765","lastNameEn":"CHO","firstNameEn":"SUNG SHIK","passportIssued":"2019-05-28","passport":"2029-05-28","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2026-01-28","usVisa":"2036-01-21","licenseType":"운송용","licenseNo":"11-002379","licenseIssued":"2022-10-11","limitB787":"B787","limitOther":"B737, B777, F70/F100","eptaGrade":"4","epta":"2028-11-29","eptaPeriod":"1년","medicalIssued":"2026-04-16","medical":"2027-04-30","radioIssued":"2025-02-04","radio":"2030-02-03"},{"role":"기장","name":"김은수","empNo":"P203015","passportNo":"M21000132","lastNameEn":"KIM","firstNameEn":"EUN SU","passportIssued":"2018-01-17","passport":"2028-01-17","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2023-08-10","usVisa":"2033-08-08","licenseType":"운송용","licenseNo":"11-006471","licenseIssued":"2021-04-21","limitB787":"B787","limitOther":"A320, A350, C525","eptaGrade":"4","epta":"2027-07-03","eptaPeriod":"1년","medicalIssued":"2025-07-09","medical":"2026-07-31","radioIssued":"2025-08-28","radio":"2030-08-27"},{"role":"기장","name":"김지웅","empNo":"P203012","passportNo":"M16747072","lastNameEn":"KIM","firstNameEn":"JI WOONG","passportIssued":"2019-04-09","passport":"2029-04-09","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2017-02-07","usVisa":"2027-02-06","licenseType":"운송용","licenseNo":"11-002759","licenseIssued":"2021-04-01","limitB787":"B787","limitOther":"A330, B737, MD80","eptaGrade":"4","epta":"2027-04-26","eptaPeriod":"1년","medicalIssued":"2026-04-13","medical":"2027-04-30","radioIssued":"2025-03-09","radio":"2030-03-08"},{"role":"기장","name":"경진수","empNo":"P203008","passportNo":"M857P7318","lastNameEn":"KYUNG","firstNameEn":"JIN SOO","passportIssued":"2023-02-17","passport":"2033-02-17","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2023-05-02","usVisa":"2033-04-26","licenseType":"운송용","licenseNo":"11-001895","licenseIssued":"2020-11-11","limitB787":"B787","limitOther":"A310/300-600, B777","eptaGrade":"4","epta":"2027-01-23","eptaPeriod":"1년","medicalIssued":"2026-04-09","medical":"2027-04-30","radioIssued":"2025-01-24","radio":"2030-01-23"},{"role":"기장","name":"서호균","empNo":"P203019","passportNo":"M57933203","lastNameEn":"SEO","firstNameEn":"HOGYUN","passportIssued":"2021-12-06","passport":"2031-12-06","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-01-10","usVisa":"2035-01-05","licenseType":"운송용","licenseNo":"11-007088","licenseIssued":"2021-08-20","limitB787":"B787","limitOther":"B737, C525","eptaGrade":"4","epta":"2027-11-08","eptaPeriod":"1년","medicalIssued":"2025-10-23","medical":"2026-10-31","radioIssued":"2022-09-19","radio":"2027-09-18"},{"role":"기장","name":"배총태","empNo":"P203007","passportNo":"M349A7714","lastNameEn":"BAE","firstNameEn":"CHONG TAE","passportIssued":"2025-09-08","passport":"2035-09-08","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2025-12-23","usVisa":"2035-12-18","licenseType":"운송용","licenseNo":"11-001399","licenseIssued":"2020-11-25","limitB787":"B787","limitOther":"A300, B737, B747-400, B777, CE500/CE560, MD80","eptaGrade":"4","epta":"2026-12-23","eptaPeriod":"6개월","medicalIssued":"2026-04-20","medical":"2026-10-31","radioIssued":"2024-11-17","radio":"2029-11-16"},{"role":"기장","name":"박형근","empNo":"P213005","passportNo":"M512Y4620","lastNameEn":"PARK","firstNameEn":"HYEONG KEUN","passportIssued":"2025-09-16","passport":"2035-09-16","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-11-07","usVisa":"2035-11-04","licenseType":"운송용","licenseNo":"11-002975","licenseIssued":"2020-12-22","limitB787":"B787","limitOther":"B737, B777, MD11, MD80","eptaGrade":"4","epta":"2027-02-09","eptaPeriod":"1년","medicalIssued":"2025-06-10","medical":"2026-06-30","radioIssued":"2025-08-24","radio":"2030-08-23"},{"role":"기장","name":"신동훈","empNo":"P193002","passportNo":"M28569411","lastNameEn":"SHIN","firstNameEn":"DONG HOON","passportIssued":"2024-08-02","passport":"2034-08-02","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-06-03","usVisa":"2035-06-03","licenseType":"운송용","licenseNo":"11-003219","licenseIssued":"2023-03-06","limitB787":"B787","limitOther":"B737, B747-400","eptaGrade":"4","epta":"2029-03-04","eptaPeriod":"1년","medicalIssued":"2025-03-06","medical":"2027-03-31","radioIssued":"2025-10-18","radio":"2030-10-17"},{"role":"기장","name":"이중엽","empNo":"P203002","passportNo":"M90130582","lastNameEn":"YI","firstNameEn":"CHUNG YUP","passportIssued":"2017-11-24","passport":"2027-11-24","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-05-11","usVisa":"2032-05-09","licenseType":"운송용","licenseNo":"11-002974","licenseIssued":"2020-10-07","limitB787":"B787","limitOther":"B737, B747-400, F70/F100","eptaGrade":"4","epta":"2026-09-21","eptaPeriod":"1년","medicalIssued":"2026-04-15","medical":"2027-04-30","radioIssued":"2025-11-24","radio":"2030-11-23"},{"role":"기장","name":"고희덕","empNo":"P213001","passportNo":"M54476110","lastNameEn":"KO","firstNameEn":"HEE DUK","passportIssued":"2024-12-31","passport":"2034-12-31","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-12-15","usVisa":"2035-12-10","licenseType":"운송용","licenseNo":"11-001460","licenseIssued":"2021-11-17","limitB787":"B787","limitOther":"A310/A300-600, A330, A380, B727, MD80","eptaGrade":"6","epta":"영구","eptaPeriod":"6개월","medicalIssued":"2025-12-04","medical":"2026-06-30","radioIssued":"2026-01-24","radio":"2031-01-23"},{"role":"기장","name":"임원길","empNo":"P190001","passportNo":"M976T7565","lastNameEn":"LIM","firstNameEn":"WON KIL","passportIssued":"2025-11-27","passport":"2035-11-27","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-07-22","usVisa":"2032-07-20","licenseType":"운송용","licenseNo":"11-003658","licenseIssued":"2023-02-13","limitB787":"B787","limitOther":"B737, DHC8","eptaGrade":"4","epta":"2029-03-09","eptaPeriod":"1년","medicalIssued":"2026-03-12","medical":"2027-03-31","radioIssued":"2026-01-30","radio":"2031-01-29"},{"role":"기장","name":"김훈A","empNo":"P213003","passportNo":"M39668093","lastNameEn":"KIM","firstNameEn":"HOON","passportIssued":"2017-03-13","passport":"2027-03-13","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2020-09-21","usVisa":"2030-09-17","licenseType":"운송용","licenseNo":"11-001880","licenseIssued":"2020-11-06","limitB787":"B787","limitOther":"A310/A300-600, B747-400, B777","eptaGrade":"4","epta":"2027-02-16","eptaPeriod":"1년","medicalIssued":"2025-06-09","medical":"2026-06-30","radioIssued":"2023-01-09","radio":"2028-01-08"},{"role":"기장","name":"이동수","empNo":"P213006","passportNo":"M04537193","lastNameEn":"LEE","firstNameEn":"DONG SOO","passportIssued":"2018-06-25","passport":"2028-06-25","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2017-05-08","usVisa":"2027-05-07","licenseType":"운송용","licenseNo":"11-002508","licenseIssued":"2021-11-17","limitB787":"B787","limitOther":"B737, B777, MD11","eptaGrade":"4","epta":"2026-12-23","eptaPeriod":"1년","medicalIssued":"2023-10-10","medical":"2025-10-31","radioIssued":"2021-06-24","radio":"2026-06-23"},{"role":"기장","name":"정권철","empNo":"P223009","passportNo":"M07613073","lastNameEn":"JUNG","firstNameEn":"KWON CHUL","passportIssued":"2017-08-30","passport":"2027-08-30","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2020-01-29","usVisa":"2030-01-28","licenseType":"운송용","licenseNo":"11-004292","licenseIssued":"2022-11-14","limitB787":"B787","limitOther":"A310/A300-600, A320, B737, B747-400, CE500/CE560","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2026-05-12","medical":"2027-05-31","radioIssued":"2024-03-05","radio":"2029-03-04"},{"role":"기장","name":"김경석","empNo":"P223006","passportNo":"M26392424","lastNameEn":"KIM","firstNameEn":"KYOUNG SEOK","passportIssued":"2016-07-04","passport":"2027-02-14","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2020-12-23","usVisa":"2030-12-16","licenseType":"운송용","licenseNo":"11-001674","licenseIssued":"2019-05-10","limitB787":"B787","limitOther":"A300, A330, B727, B737, B777","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-07-01","medical":"2026-07-31","radioIssued":"2023-10-13","radio":"2028-10-12"},{"role":"기장","name":"유민상","empNo":"P223007","passportNo":"M806F8113","lastNameEn":"YOO","firstNameEn":"MIN SANG","passportIssued":"2022-08-26","passport":"2032-08-26","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2023-02-06","usVisa":"2033-02-02","licenseType":"운송용","licenseNo":"11-005159","licenseIssued":"2022-11-11","limitB787":"B787","limitOther":"A320, A330, B737, B747-400, CE500/CE560","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-07-07","medical":"2026-07-31","radioIssued":"2025-06-06","radio":"2030-06-05"},{"role":"기장","name":"이은상","empNo":"P193001","passportNo":"M667P2993","lastNameEn":"YI","firstNameEn":"EUN SANG","passportIssued":"2025-10-22","passport":"2035-10-22","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2026-03-31","usVisa":"2036-03-23","licenseType":"운송용","licenseNo":"11-002308","licenseIssued":"2022-11-28","limitB787":"B787","limitOther":"A330, A380, MD80","eptaGrade":"4","epta":"2029-01-27","eptaPeriod":"1년","medicalIssued":"2026-03-23","medical":"2027-03-31","radioIssued":"2025-10-03","radio":"2030-10-02"},{"role":"기장","name":"김경수","empNo":"P223005","passportNo":"M773V8528","lastNameEn":"KIM","firstNameEn":"KYUNG SOO","passportIssued":"2022-08-26","passport":"2032-08-26","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2023-02-06","usVisa":"2033-02-02","licenseType":"운송용","licenseNo":"11-004505","licenseIssued":"2022-11-11","limitB787":"B787","limitOther":"A320, B737, B777, CE500/CE560","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-07-01","medical":"2026-07-31","radioIssued":"2022-07-14","radio":"2027-07-13"},{"role":"기장","name":"강흥건","empNo":"P233011","passportNo":"M32121602","lastNameEn":"KANG","firstNameEn":"HUNG KUN","passportIssued":"2024-03-06","passport":"2034-03-06","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-07-25","usVisa":"2029-07-23","licenseType":"운송용","licenseNo":"11-004169","licenseIssued":"2021-02-15","limitB787":"B787","limitOther":"B737, B777, CE500/CE560","eptaGrade":"4","epta":"2027-02-10","eptaPeriod":"1년","medicalIssued":"2025-10-01","medical":"2026-10-31","radioIssued":"2022-04-27","radio":"2027-04-26"},{"role":"기장","name":"김영준","empNo":"P233012","passportNo":"M043U6118","lastNameEn":"KIM","firstNameEn":"YOUNG JOON","passportIssued":"2025-09-09","passport":"2035-09-09","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2020-12-10","usVisa":"2030-12-08","licenseType":"운송용","licenseNo":"11-004586","licenseIssued":"2022-10-17","limitB787":"B787","limitOther":"A330, B737, B747-400, CE500/CE560","eptaGrade":"4","epta":"2028-04-21","eptaPeriod":"1년","medicalIssued":"2025-10-21","medical":"2026-10-31","radioIssued":"2024-02-25","radio":"2029-02-24"},{"role":"기장","name":"신경호","empNo":"P233019","passportNo":"M43080033","lastNameEn":"SHIN","firstNameEn":"GYEONG HO","passportIssued":"2024-11-19","passport":"2034-11-19","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2020-09-10","usVisa":"2030-09-07","licenseType":"운송용","licenseNo":"11-001977","licenseIssued":"2019-09-18","limitB787":"B787","limitOther":"B737, B777, F70/F100","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-11-07","medical":"2026-11-30","radioIssued":"2024-09-06","radio":"2029-09-05"},{"role":"기장","name":"정진수","empNo":"P233025","passportNo":"M122C6619","lastNameEn":"JUNG","firstNameEn":"JIN SOO","passportIssued":"2025-02-18","passport":"2035-02-18","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-07-22","usVisa":"2032-07-21","licenseType":"운송용","licenseNo":"11-004050","licenseIssued":"2020-09-17","limitB787":"B787","limitOther":"B737, DHC8","eptaGrade":"4","epta":"2027-01-25","eptaPeriod":"1년","medicalIssued":"2025-08-13","medical":"2026-08-31","radioIssued":"2025-03-04","radio":"2030-03-03"},{"role":"기장","name":"김홍진","empNo":"P233013","passportNo":"M648S7919","lastNameEn":"KIM","firstNameEn":"HONG JIN","passportIssued":"2025-09-02","passport":"2035-09-02","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2020-12-03","usVisa":"2030-11-29","licenseType":"운송용","licenseNo":"11-002041","licenseIssued":"2021-01-07","limitB787":"B787","limitOther":"A300, A310/A300-600, B747-400, B777","eptaGrade":"4","epta":"2027-01-05","eptaPeriod":"1년","medicalIssued":"2026-03-10","medical":"2027-03-31","radioIssued":"2025-04-06","radio":"2030-04-05"},{"role":"기장","name":"신민철","empNo":"P233020","passportNo":"M198F6300","lastNameEn":"SHIN","firstNameEn":"MIN CHUL","passportIssued":"2025-02-07","passport":"2035-02-07","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-09-16","usVisa":"2032-09-15","licenseType":"운송용","licenseNo":"11-003862","licenseIssued":"2023-01-02","limitB787":"B787","limitOther":"B737, DHC8","eptaGrade":"4","epta":"2029-01-15","eptaPeriod":"1년","medicalIssued":"2026-05-11","medical":"2027-05-31","radioIssued":"2026-02-22","radio":"2031-02-21"},{"role":"기장","name":"전승호","empNo":"P233024","passportNo":"M342T7513","lastNameEn":"CHUN","firstNameEn":"SEUNG HO","passportIssued":"2022-06-30","passport":"2032-06-30","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-05-16","usVisa":"2029-05-14","licenseType":"운송용","licenseNo":"11-002913","licenseIssued":"2023-02-01","limitB787":"B787","limitOther":"A310/A300-600, B737, B747-400","eptaGrade":"4","epta":"2029-01-11","eptaPeriod":"1년","medicalIssued":"2026-02-19","medical":"2027-02-28","radioIssued":"2022-06-17","radio":"2027-06-16"},{"role":"기장","name":"서동철","empNo":"P233018","passportNo":"M38536862","lastNameEn":"SUH","firstNameEn":"DONG CHEOL","passportIssued":"2017-04-11","passport":"2027-04-11","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2020-02-27","usVisa":"2030-02-25","licenseType":"운송용","licenseNo":"11-001872","licenseIssued":"2022-11-10","limitB787":"B787","limitOther":"B737, B747-400, B777, F70/F100","eptaGrade":"4","epta":"2027-02-05","eptaPeriod":"1년","medicalIssued":"2025-11-06","medical":"2026-11-30","radioIssued":"2022-06-24","radio":"2027-06-23"},{"role":"기장","name":"박병열","empNo":"P233016","passportNo":"M154Z2045","lastNameEn":"PARK","firstNameEn":"BYOUNG LYOUL","passportIssued":"2023-03-14","passport":"2033-03-14","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2023-05-01","usVisa":"2033-04-27","licenseType":"운송용","licenseNo":"11-002511","licenseIssued":"2022-06-29","limitB787":"B787","limitOther":"A310/A300-600, A330, B747-400","eptaGrade":"4","epta":"2028-03-02","eptaPeriod":"1년","medicalIssued":"2025-07-07","medical":"2026-07-31","radioIssued":"2022-08-28","radio":"2027-08-27"},{"role":"기장","name":"남궁명","empNo":"P233014","passportNo":"M419V1718","lastNameEn":"NAMKUNG","firstNameEn":"MYOUNG","passportIssued":"2024-09-24","passport":"2034-09-24","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2017-01-10","usVisa":"2027-01-08","licenseType":"운송용","licenseNo":"11-003751","licenseIssued":"2023-02-24","limitB787":"B787","limitOther":"A310/A300-600, B777","eptaGrade":"4","epta":"2029-03-04","eptaPeriod":"1년","medicalIssued":"2026-01-14","medical":"2027-01-31","radioIssued":"2023-01-16","radio":"2028-01-15"},{"role":"기장","name":"최상준","empNo":"P233026","passportNo":"M492A6992","lastNameEn":"CHOI","firstNameEn":"SANG JOON","passportIssued":"2025-08-28","passport":"2035-08-28","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2017-02-02","usVisa":"2027-01-31","licenseType":"운송용","licenseNo":"11-002344","licenseIssued":"2022-03-10","limitB787":"B787","limitOther":"B737, B777, F70/F100","eptaGrade":"4","epta":"2027-02-27","eptaPeriod":"1년","medicalIssued":"2026-02-06","medical":"2027-02-28","radioIssued":"2023-01-17","radio":"2028-01-16"},{"role":"기장","name":"이장헌","empNo":"P233023","passportNo":"M15785063","lastNameEn":"LEE","firstNameEn":"JANG HEON","passportIssued":"2024-10-08","passport":"2034-10-08","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2016-10-28","usVisa":"2026-10-23","licenseType":"운송용","licenseNo":"11-002333","licenseIssued":"2023-01-26","limitB787":"B787","limitOther":"B737, B747-400, F70/F100","eptaGrade":"4","epta":"2027-02-05","eptaPeriod":"1년","medicalIssued":"2026-02-13","medical":"2027-02-28","radioIssued":"2023-01-26","radio":"2028-01-25"},{"role":"기장","name":"박준성","empNo":"P233017","passportNo":"M29123916","lastNameEn":"PARK","firstNameEn":"JUNE SUNG","passportIssued":"2017-04-11","passport":"2027-04-11","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-10-23","usVisa":"2029-10-21","licenseType":"운송용","licenseNo":"11-002207","licenseIssued":"2023-03-16","limitB787":"B787","limitOther":"B737, B747-400, B777","eptaGrade":"4","epta":"2029-01-06","eptaPeriod":"1년","medicalIssued":"2026-03-27","medical":"2027-03-31","radioIssued":"2023-02-23","radio":"2028-02-22"},{"role":"기장","name":"이석원","empNo":"P233022","passportNo":"M66001738","lastNameEn":"LEE","firstNameEn":"SUK WON","passportIssued":"2017-04-21","passport":"2027-04-21","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-02-25","usVisa":"2029-02-20","licenseType":"운송용","licenseNo":"11-002970","licenseIssued":"2014-01-13","limitB787":"B787","limitOther":"B737, B777, MD80","eptaGrade":"4","epta":"2029-03-04","eptaPeriod":"1년","medicalIssued":"2026-03-10","medical":"2027-03-31","radioIssued":"2023-02-27","radio":"2028-02-26"},{"role":"기장","name":"김선용","empNo":"P233033","passportNo":"M170L2858","lastNameEn":"KIM","firstNameEn":"SUN YONG","passportIssued":"2025-05-08","passport":"2035-05-08","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2017-06-28","usVisa":"2027-06-27","licenseType":"운송용","licenseNo":"11-004878","licenseIssued":"2019-09-26","limitB787":"B787","limitOther":"B737","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-06-26","medical":"2026-06-30","radioIssued":"2025-06-10","radio":"2030-06-09"},{"role":"기장","name":"김용식","empNo":"P233034","passportNo":"M34948177","lastNameEn":"KIM","firstNameEn":"YONG SIK","passportIssued":"2026-04-06","passport":"2036-04-06","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2023-07-25","usVisa":"2033-07-23","licenseType":"운송용","licenseNo":"11-001743","licenseIssued":"2021-09-23","limitB787":"B787","limitOther":"ATR42/ATR72, B737, B747-400, B777, MD80","eptaGrade":"4","epta":"2027-09-20","eptaPeriod":"6개월","medicalIssued":"2025-12-02","medical":"2026-06-30","radioIssued":"2024-06-25","radio":"2029-06-24"},{"role":"기장","name":"이승현","empNo":"P233035","passportNo":"M32473284","lastNameEn":"LEE","firstNameEn":"SEUNG HYUN","passportIssued":"2025-06-04","passport":"2035-06-04","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-01-14","usVisa":"2029-01-10","licenseType":"운송용","licenseNo":"11-003312","licenseIssued":"2023-02-27","limitB787":"B787","limitOther":"A310/A330-600, B737, B747-400","eptaGrade":"4","epta":"2028-04-04","eptaPeriod":"1년","medicalIssued":"2026-02-05","medical":"2027-02-28","radioIssued":"2023-01-24","radio":"2028-01-23"},{"role":"기장","name":"이재현","empNo":"P233036","passportNo":"M55336600","lastNameEn":"LEE","firstNameEn":"JAE HYUN","passportIssued":"2017-01-09","passport":"2027-01-09","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-05-02","usVisa":"2029-04-29","licenseType":"운송용","licenseNo":"11-004405","licenseIssued":"2019-08-22","limitB787":"B787","limitOther":"A330, B737, B747-400, CE500/CE560","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2026-04-01","medical":"2027-04-30","radioIssued":"2022-01-15","radio":"2027-01-14"},{"role":"기장","name":"임준호","empNo":"P233037","passportNo":"M320M1623","lastNameEn":"LIM","firstNameEn":"JUN HO","passportIssued":"2025-01-23","passport":"2035-01-23","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2020-02-20","usVisa":"2030-02-19","licenseType":"운송용","licenseNo":"11-002143","licenseIssued":"2020-10-30","limitB787":"B787","limitOther":"A300, B737, B747-400","eptaGrade":"4","epta":"2026-08-26","eptaPeriod":"1년","medicalIssued":"2025-08-08","medical":"2026-08-31","radioIssued":"2022-10-23","radio":"2027-10-22"},{"role":"기장","name":"강성준","empNo":"P243002","passportNo":"M96010771","lastNameEn":"KANG","firstNameEn":"SUNG JUN","passportIssued":"2019-02-19","passport":"2029-02-19","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-07-22","usVisa":"2032-07-21","licenseType":"운송용","licenseNo":"11-005056","licenseIssued":"2022-11-16","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2029-03-24","eptaPeriod":"1년","medicalIssued":"2026-04-06","medical":"2027-04-30","radioIssued":"2024-08-30","radio":"2029-08-29"},{"role":"기장","name":"윤세기","empNo":"P243008","passportNo":"M73846317","lastNameEn":"YOON","firstNameEn":"SE KI","passportIssued":"2021-03-30","passport":"2031-03-30","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2026-03-20","usVisa":"2036-03-15","licenseType":"운송용","licenseNo":"11-002019","licenseIssued":"2019-11-25","limitB787":"B787","limitOther":"A310/A330-600, A380, B747-400 ,B777, F70/F100","eptaGrade":"4","epta":"2029-03-04","eptaPeriod":"6개월","medicalIssued":"2026-04-10","medical":"2026-10-31","radioIssued":"2023-01-13","radio":"2028-01-12"},{"role":"기장","name":"김훈B","empNo":"P243007","passportNo":"M26186220","lastNameEn":"KIM","firstNameEn":"HOON","passportIssued":"2017-06-05","passport":"2027-06-05","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2017-10-17","usVisa":"2027-10-15","licenseType":"운송용","licenseNo":"11-005949","licenseIssued":"2021-09-28","limitB787":"B787","limitOther":"B737, B777, CE500/CE560","eptaGrade":"4","epta":"2027-10-30","eptaPeriod":"1년","medicalIssued":"2026-03-12","medical":"2027-03-31","radioIssued":"2025-11-14","radio":"2030-11-13"},{"role":"기장","name":"김영길","empNo":"P243004","passportNo":"M974X4872","lastNameEn":"KIM","firstNameEn":"YEONG GIL","passportIssued":"2025-05-06","passport":"2035-05-06","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2018-11-13","usVisa":"2028-11-12","licenseType":"운송용","licenseNo":"11-003925","licenseIssued":"2018-01-24","limitB787":"B787","limitOther":"B737, B747-400, CE500/CE560","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-08-20","medical":"2026-08-31","radioIssued":"2022-11-22","radio":"2027-11-21"},{"role":"기장","name":"이혁제","empNo":"P243010","passportNo":"M198N1521","lastNameEn":"LEE","firstNameEn":"HYEOK JE","passportIssued":"2022-08-29","passport":"2032-08-29","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-09-16","usVisa":"2032-09-15","licenseType":"운송용","licenseNo":"11-004245","licenseIssued":"2022-11-11","limitB787":"B787","limitOther":"ATR42/ATR72, B737, DHC8","eptaGrade":"4","epta":"2029-04-22","eptaPeriod":"1년","medicalIssued":"2026-04-02","medical":"2027-04-30","radioIssued":"2024-03-21","radio":"2029-03-20"},{"role":"기장","name":"김치윤","empNo":"P243006","passportNo":"M33025329","lastNameEn":"KIM","firstNameEn":"CHI YUN","passportIssued":"2019-05-15","passport":"2029-05-15","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2020-02-20","usVisa":"2030-02-19","licenseType":"운송용","licenseNo":"11-004355","licenseIssued":"2022-07-12","limitB787":"B787","limitOther":"B737, B747-400, CE500/CE560","eptaGrade":"4","epta":"2028-04-04","eptaPeriod":"1년","medicalIssued":"2025-06-13","medical":"2026-06-30","radioIssued":"2022-07-11","radio":"2027-07-10"},{"role":"기장","name":"김세훈","empNo":"P243003","passportNo":"M61469756","lastNameEn":"KIM","firstNameEn":"SEI HOON","passportIssued":"2016-12-06","passport":"2026-12-06","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2024-06-14","usVisa":"2034-06-10","licenseType":"운송용","licenseNo":"11-004179","licenseIssued":"2024-08-12","limitB787":"B787","limitOther":"B737, B777","eptaGrade":"4","epta":"2028-10-25","eptaPeriod":"1년","medicalIssued":"2025-06-13","medical":"2026-06-30","radioIssued":"2023-01-26","radio":"2028-01-25"},{"role":"기장","name":"김일관","empNo":"P243005","passportNo":"M281J2375","lastNameEn":"KIM","firstNameEn":"ILKWAN","passportIssued":"2022-04-25","passport":"2032-04-25","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-09-16","usVisa":"2032-09-15","licenseType":"운송용","licenseNo":"11-005799","licenseIssued":"2023-08-10","limitB787":"","limitOther":"B737","eptaGrade":"4","epta":"2026-10-27","eptaPeriod":"1년","medicalIssued":"2025-11-10","medical":"2026-11-30","radioIssued":"2021-09-10","radio":"2026-09-09"},{"role":"기장","name":"이창훈","empNo":"P243009","passportNo":"M53462318","lastNameEn":"LEE","firstNameEn":"CHANG HOON","passportIssued":"2017-11-09","passport":"2027-11-09","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2023-07-20","usVisa":"2033-07-18","licenseType":"운송용","licenseNo":"11-004862","licenseIssued":"2023-10-05","limitB787":"B787","limitOther":"ATR42/ATR72, B737","eptaGrade":"4","epta":"2027-01-25","eptaPeriod":"1년","medicalIssued":"2025-12-16","medical":"2026-12-31","radioIssued":"2024-07-31","radio":"2029-07-30"},{"role":"기장","name":"윤완석","empNo":"P243020","passportNo":"M588N5388","lastNameEn":"YOON","firstNameEn":"WAN SEOK","passportIssued":"2025-07-24","passport":"2035-07-24","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2026-04-10","usVisa":"2036-04-05","licenseType":"운송용","licenseNo":"11-002097","licenseIssued":"2023-10-16","limitB787":"B787","limitOther":"B737, B777, F70/F100, MD11, MD80","eptaGrade":"4","epta":"2029-03-17","eptaPeriod":"1년","medicalIssued":"2025-06-09","medical":"2026-06-30","radioIssued":"2023-10-06","radio":"2028-10-05"},{"role":"기장","name":"이태권","empNo":"P243021","passportNo":"M18864746","lastNameEn":"LEE","firstNameEn":"TAE KWON","passportIssued":"2025-01-06","passport":"2035-01-06","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2026-03-13","usVisa":"2036-03-04","licenseType":"운송용","licenseNo":"11-002252","licenseIssued":"2024-01-22","limitB787":"B787","limitOther":"B737, B777, MD11, MD80","eptaGrade":"4","epta":"2028-05-27","eptaPeriod":"1년","medicalIssued":"2025-10-13","medical":"2026-10-31","radioIssued":"2024-08-22","radio":"2029-08-21"},{"role":"기장","name":"정남석","empNo":"P243022","passportNo":"M607U9763","lastNameEn":"JEONG","firstNameEn":"NAMSEOK","passportIssued":"2024-06-18","passport":"2034-06-18","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2017-03-14","usVisa":"2027-03-09","licenseType":"운송용","licenseNo":"11-002293","licenseIssued":"2024-02-08","limitB787":"B787","limitOther":"ATR42/ATR72, B737, B747-400, MD80","eptaGrade":"4","epta":"2029-01-11","eptaPeriod":"1년","medicalIssued":"2025-08-18","medical":"2026-08-31","radioIssued":"2025-04-05","radio":"2030-04-04"},{"role":"기장","name":"강호준","empNo":"P243027","passportNo":"M472P1614","lastNameEn":"KANG","firstNameEn":"HO JUN","passportIssued":"2022-04-20","passport":"2032-04-20","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-05-17","usVisa":"2032-05-16","licenseType":"운송용","licenseNo":"11-005776","licenseIssued":"2022-08-08","limitB787":"B787","limitOther":"B737, C525","eptaGrade":"4","epta":"2028-10-01","eptaPeriod":"1년","medicalIssued":"2026-03-17","medical":"2027-03-31","radioIssued":"2024-05-28","radio":"2029-05-27"},{"role":"기장","name":"노영호","empNo":"P243028","passportNo":"M350P9308","lastNameEn":"ROH","firstNameEn":"YOUNG HO","passportIssued":"2026-03-10","passport":"2036-03-10","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2016-11-18","usVisa":"2026-11-16","licenseType":"운송용","licenseNo":"11-004168","licenseIssued":"2023-11-13","limitB787":"B787","limitOther":"A310/A300-600, B737, B747-400, CE500/CE650","eptaGrade":"4","epta":"2027-01-30","eptaPeriod":"1년","medicalIssued":"2025-06-04","medical":"2026-06-30","radioIssued":"2025-09-30","radio":"2030-09-29"},{"role":"기장","name":"박양주","empNo":"P243029","passportNo":"M33842430","lastNameEn":"PARK","firstNameEn":"YANGJOO","passportIssued":"2018-06-26","passport":"2028-06-26","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-05-30","usVisa":"2029-05-28","licenseType":"운송용","licenseNo":"11-006030","licenseIssued":"2016-07-18","limitB787":"B787","limitOther":"B737, B777","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2026-03-10","medical":"2027-03-31","radioIssued":"2024-04-15","radio":"2029-04-14"},{"role":"기장","name":"송다비라","empNo":"P243030","passportNo":"M926R2952","lastNameEn":"SONG","firstNameEn":"DABILA","passportIssued":"2024-08-16","passport":"2034-08-16","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2024-10-09","usVisa":"2034-10-06","licenseType":"운송용","licenseNo":"11-002773","licenseIssued":"2024-05-08","limitB787":"B787","limitOther":"B737, B747-400, F70/F100","eptaGrade":"4","epta":"2027-05-06","eptaPeriod":"1년","medicalIssued":"2026-02-06","medical":"2027-02-28","radioIssued":"2024-08-13","radio":"2029-08-12"},{"role":"기장","name":"송우익","empNo":"P243031","passportNo":"M48581020","lastNameEn":"SONG","firstNameEn":"WOO IK","passportIssued":"2017-11-24","passport":"2027-11-24","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2024-10-07","usVisa":"2034-10-01","licenseType":"운송용","licenseNo":"11-002412","licenseIssued":"2023-03-22","limitB787":"B787","limitOther":"A320, B737, B777, CE500/CE560","eptaGrade":"4","epta":"2029-03-20","eptaPeriod":"1년","medicalIssued":"2025-12-09","medical":"2026-12-31","radioIssued":"2023-03-06","radio":"2028-03-05"},{"role":"기장","name":"이병문","empNo":"P243032","passportNo":"M530Z5543","lastNameEn":"LEE","firstNameEn":"BYOUNGMUN","passportIssued":"2026-01-30","passport":"2036-01-30","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-03-22","usVisa":"2032-03-21","licenseType":"운송용","licenseNo":"11-005104","licenseIssued":"2023-04-21","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2029-07-26","eptaPeriod":"1년","medicalIssued":"2026-04-05","medical":"2027-04-30","radioIssued":"2023-02-24","radio":"2028-02-23"},{"role":"기장","name":"임동헌","empNo":"P243033","passportNo":"M154R3661","lastNameEn":"LIM","firstNameEn":"DONGHEON","passportIssued":"2025-10-01","passport":"2035-10-01","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-06-15","usVisa":"2032-06-13","licenseType":"운송용","licenseNo":"11-001923","licenseIssued":"2024-08-13","limitB787":"B787","limitOther":"A330, A380, B737, B747-400","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-10-01","medical":"2026-10-31","radioIssued":"2021-11-11","radio":"2026-11-10"},{"role":"기장","name":"임승곤","empNo":"P243034","passportNo":"M806F8240","lastNameEn":"LIM","firstNameEn":"SUNGGON","passportIssued":"2025-09-02","passport":"2035-09-02","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-12-02","usVisa":"2029-12-01","licenseType":"운송용","licenseNo":"11-003653","licenseIssued":"2022-02-07","limitB787":"B787","limitOther":"B747-400, B757/B767, B777","eptaGrade":"4","epta":"2028-05-23","eptaPeriod":"1년","medicalIssued":"2025-07-04","medical":"2026-07-31","radioIssued":"2021-11-06","radio":"2026-11-05"},{"role":"기장","name":"전우태","empNo":"P243035","passportNo":"M665Y9071","lastNameEn":"JEON","firstNameEn":"WOOTAE","passportIssued":"2022-03-30","passport":"2032-03-30","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-05-20","usVisa":"2032-05-18","licenseType":"운송용","licenseNo":"11-005658","licenseIssued":"2022-10-18","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2028-11-08","eptaPeriod":"1년","medicalIssued":"2025-10-17","medical":"2026-10-31","radioIssued":"2025-07-02","radio":"2030-07-01"},{"role":"기장","name":"강상진","empNo":"P243039","passportNo":"M751K3200","lastNameEn":"KANG","firstNameEn":"SANG JIN","passportIssued":"2024-11-19","passport":"2034-11-19","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-01-13","usVisa":"2035-01-07","licenseType":"운송용","licenseNo":"11-004266","licenseIssued":"2013-10-14","limitB787":"B787","limitOther":"A330, B737, B747-400, CE500/CE560","eptaGrade":"4","epta":"2028-02-03","eptaPeriod":"1년","medicalIssued":"2025-11-17","medical":"2026-11-30","radioIssued":"2024-07-05","radio":"2029-07-04"},{"role":"기장","name":"김길주","empNo":"P243040","passportNo":"M86615298","lastNameEn":"KIM","firstNameEn":"KIL JOO","passportIssued":"2018-02-02","passport":"2028-02-02","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2018-03-06","usVisa":"2028-03-04","licenseType":"운송용","licenseNo":"11-002055","licenseIssued":"2016-10-04","limitB787":"B787","limitOther":"A310/A300-600, B747-400, B777, GS-IV","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-07-14","medical":"2026-07-31","radioIssued":"2022-09-15","radio":"2027-09-14"},{"role":"기장","name":"나종석","empNo":"P243042","passportNo":"M62149272","lastNameEn":"NA","firstNameEn":"JONG SUK","passportIssued":"2017-10-18","passport":"2027-10-18","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2026-04-10","usVisa":"2036-04-05","licenseType":"운송용","licenseNo":"11-002196","licenseIssued":"2014-02-25","limitB787":"B787","limitOther":"B737, B747-400, B777, MD80","eptaGrade":"4","epta":"2028-03-05","eptaPeriod":"1년","medicalIssued":"2025-07-15","medical":"2026-07-31","radioIssued":"2024-09-28","radio":"2029-09-27"},{"role":"기장","name":"연정호","empNo":"P243043","passportNo":"M560M4741","lastNameEn":"YUN","firstNameEn":"JUNG HO","passportIssued":"2026-01-14","passport":"2036-01-14","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2020-02-07","usVisa":"2030-02-06","licenseType":"운송용","licenseNo":"11-002470","licenseIssued":"2014-12-04","limitB787":"B787","limitOther":"B737, B777, F70/F100","eptaGrade":"4","epta":"2027-02-16","eptaPeriod":"1년","medicalIssued":"2025-07-11","medical":"2026-07-31","radioIssued":"2024-06-28","radio":"2029-06-27"},{"role":"기장","name":"이세찬","empNo":"P243044","passportNo":"M66357764","lastNameEn":"LEE","firstNameEn":"SECHAN","passportIssued":"2017-06-13","passport":"2027-06-13","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-01-03","usVisa":"2034-12-29","licenseType":"운송용","licenseNo":"11-006240","licenseIssued":"2024-07-15","limitB787":"B787","limitOther":"A320, A330, B737","eptaGrade":"4","epta":"2027-11-08","eptaPeriod":"1년","medicalIssued":"2026-01-16","medical":"2027-01-31","radioIssued":"2023-05-28","radio":"2028-05-27"},{"role":"기장","name":"이재형","empNo":"P243045","passportNo":"L620L6876","lastNameEn":"LEE","firstNameEn":"JAE HYUNG","passportIssued":"2026-02-11","passport":"2036-02-11","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2017-02-23","usVisa":"2027-02-22","licenseType":"운송용","licenseNo":"11-001999","licenseIssued":"2024-07-01","limitB787":"B787","limitOther":"A310/A300-600, B747-400","eptaGrade":"4","epta":"2029-01-09","eptaPeriod":"1년","medicalIssued":"2025-09-05","medical":"2026-09-30","radioIssued":"2024-06-12","radio":"2029-06-11"},{"role":"기장","name":"장재원","empNo":"P243046","passportNo":"M636G1563","lastNameEn":"JANG","firstNameEn":"JAE WON","passportIssued":"2022-10-06","passport":"2032-10-06","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2017-08-29","usVisa":"2027-08-27","licenseType":"운송용","licenseNo":"11-004183","licenseIssued":"2022-07-12","limitB787":"B787","limitOther":"A320, B737, B747-400, CE500/CE560","eptaGrade":"4","epta":"2029-03-04","eptaPeriod":"1년","medicalIssued":"2025-07-17","medical":"2026-07-31","radioIssued":"2021-06-14","radio":"2031-02-24"},{"role":"기장","name":"최봉근","empNo":"P243047","passportNo":"M48976366","lastNameEn":"CHOI","firstNameEn":"BONGKEUN","passportIssued":"2017-11-27","passport":"2027-11-27","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2024-12-13","usVisa":"2034-12-09","licenseType":"운송용","licenseNo":"11-005322","licenseIssued":"2022-11-21","limitB787":"B787","limitOther":"A320, CE500/CE560","eptaGrade":"5","epta":"2026-12-01","eptaPeriod":"1년","medicalIssued":"2025-06-04","medical":"2026-06-30","radioIssued":"2025-09-29","radio":"2030-09-28"},{"role":"기장","name":"김정성","empNo":"P263022","passportNo":"M564X9285","lastNameEn":"KIM","firstNameEn":"JUNG SUNG","passportIssued":"2025-09-16","passport":"2035-09-16","usVisaCD":"X","usVisaB1B2":"X","usVisaIssued":"","usVisa":"","licenseType":"운송용","licenseNo":"11-001811","licenseIssued":"2026-05-08","limitB787":"B787","limitOther":"B747-400, PA34, CE560, A330, B767, B787","eptaGrade":"5","epta":"2028-06-05","eptaPeriod":"1년","medicalIssued":"2026-05-07","medical":"2027-05-31","radioIssued":"2026-04-30","radio":"2031-04-30"},{"role":"기장","name":"이종근","empNo":"P263023","passportNo":"M44499375","lastNameEn":"YI","firstNameEn":"CHONGKUN","passportIssued":"2018-07-26","passport":"2028-07-26","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2024-07-02","usVisa":"2034-06-30","licenseType":"운송용","licenseNo":"11-004362","licenseIssued":"2025-03-10","limitB787":"B787","limitOther":"B737, B777, B737, B787","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-12-15","medical":"2026-12-31","radioIssued":"2008-11-24","radio":"2030-12-08"},{"role":"기장","name":"장래향","empNo":"P263024","passportNo":"M656N1820","lastNameEn":"JANG","firstNameEn":"RAE HYANG","passportIssued":"2025-05-29","passport":"2035-05-29","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-08-28","usVisa":"2029-08-25","licenseType":"운송용","licenseNo":"11-001789","licenseIssued":"2025-12-10","limitB787":"B787","limitOther":"F100, A300-600, B747-400, B737, B787","eptaGrade":"4","epta":"2028-12-08","eptaPeriod":"1년","medicalIssued":"2026-03-30","medical":"2027-03-31","radioIssued":"1992-04-30","radio":"2031-03-04"},{"role":"기장","name":"장명근","empNo":"P223011","passportNo":"M87039887","lastNameEn":"JANG","firstNameEn":"MYOUNGKEUN","passportIssued":"2021-11-16","passport":"2031-11-16","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2017-06-08","usVisa":"2027-06-06","licenseType":"운송용","licenseNo":"11-007368","licenseIssued":"2022-11-29","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2026-08-07","eptaPeriod":"1년","medicalIssued":"2026-04-01","medical":"2027-04-30","radioIssued":"2022-12-01","radio":"2027-11-30"},{"role":"기장","name":"최우진","empNo":"P223001","passportNo":"M537T6606","lastNameEn":"CHOI","firstNameEn":"WOOJIN","passportIssued":"2022-05-02","passport":"2032-05-02","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-03-11","usVisa":"2035-03-06","licenseType":"운송용","licenseNo":"11-006700","licenseIssued":"2022-08-29","limitB787":"B787","limitOther":"A320, B737","eptaGrade":"4","epta":"2028-06-10","eptaPeriod":"1년","medicalIssued":"2026-03-09","medical":"2027-03-31","radioIssued":"2026-02-03","radio":"2031-02-02"},{"role":"기장","name":"홍진영","empNo":"P223013","passportNo":"M13552669","lastNameEn":"HONG","firstNameEn":"JINYOUNG","passportIssued":"2021-05-18","passport":"2031-05-18","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2016-12-27","usVisa":"2026-12-26","licenseType":"운송용","licenseNo":"11-007477","licenseIssued":"2022-11-29","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2029-02-02","eptaPeriod":"1년","medicalIssued":"2025-10-10","medical":"2026-10-31","radioIssued":"2022-12-01","radio":"2027-11-30"},{"role":"기장","name":"김승재","empNo":"P223002","passportNo":"M547Y8986","lastNameEn":"KIM","firstNameEn":"SEUNG JAE","passportIssued":"2022-12-13","passport":"2032-12-13","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2017-04-04","usVisa":"2027-04-02","licenseType":"운송용","licenseNo":"11-008010","licenseIssued":"2022-08-29","limitB787":"B787","limitOther":"B737","eptaGrade":"5","epta":"2030-11-08","eptaPeriod":"1년","medicalIssued":"2025-11-14","medical":"2026-11-30","radioIssued":"2025-06-08","radio":"2030-06-07"},{"role":"부기장","name":"김동욱","empNo":"P213012","passportNo":"M698Z3013","lastNameEn":"KIM","firstNameEn":"DONG WOOK","passportIssued":"2022-02-23","passport":"2032-02-23","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-08-17","usVisa":"2032-08-16","licenseType":"사업용","licenseNo":"12-009283","licenseIssued":"2022-10-27","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2028-12-21","eptaPeriod":"1년","medicalIssued":"2025-06-02","medical":"2026-06-30","radioIssued":"2024-01-23","radio":"2029-01-22"},{"role":"부기장","name":"이장영","empNo":"P203020","passportNo":"M081V5420","lastNameEn":"LEE","firstNameEn":"JOHN YOUNG","passportIssued":"2023-02-21","passport":"2033-02-21","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-08-04","usVisa":"2032-08-02","licenseType":"운송용","licenseNo":"11-004693","licenseIssued":"2018-07-09","limitB787":"B787","limitOther":"B737, B777, CE500/CE560","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-10-23","medical":"2026-10-31","radioIssued":"2024-09-08","radio":"2029-09-07"},{"role":"부기장","name":"김지호","empNo":"P203013","passportNo":"M708V5360","lastNameEn":"KIM","firstNameEn":"JIHO","passportIssued":"2025-06-20","passport":"2035-06-20","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2016-10-18","usVisa":"2026-10-04","licenseType":"운송용","licenseNo":"11-006720","licenseIssued":"2022-03-23","limitB787":"B787","limitOther":"B737, C525","eptaGrade":"4","epta":"2028-04-07","eptaPeriod":"1년","medicalIssued":"2026-02-06","medical":"2027-02-28","radioIssued":"2025-10-31","radio":"2030-10-30"},{"role":"부기장","name":"김병욱","empNo":"P223010","passportNo":"M745C2067","lastNameEn":"KIM","firstNameEn":"BYEONGWOOK","passportIssued":"2022-03-10","passport":"2032-03-10","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-05-02","usVisa":"2032-05-01","licenseType":"운송용","licenseNo":"11-008347","licenseIssued":"2023-01-17","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"4","epta":"2028-02-08","eptaPeriod":"1년","medicalIssued":"2025-10-10","medical":"2026-10-31","radioIssued":"2021-08-24","radio":"2026-08-23"},{"role":"부기장","name":"이승민","empNo":"P213013","passportNo":"M01180483","lastNameEn":"LEE","firstNameEn":"SEUNGMIN","passportIssued":"2020-02-10","passport":"2030-02-10","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-04-16","usVisa":"2029-04-14","licenseType":"운송용","licenseNo":"11-007255","licenseIssued":"2021-11-17","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2029-05-30","eptaPeriod":"1년","medicalIssued":"2025-06-02","medical":"2026-06-30","radioIssued":"2022-11-23","radio":"2027-11-22"},{"role":"부기장","name":"김효승","empNo":"P223004","passportNo":"M80973797","lastNameEn":"KIM","firstNameEn":"HYO SEUNG","passportIssued":"2023-11-21","passport":"2033-11-21","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2016-10-06","usVisa":"2026-10-04","licenseType":"사업용","licenseNo":"12-009263","licenseIssued":"2022-08-29","limitB787":"B787","limitOther":"B737, C525","eptaGrade":"4","epta":"2026-12-29","eptaPeriod":"1년","medicalIssued":"2026-03-16","medical":"2027-03-31","radioIssued":"2024-12-16","radio":"2029-12-15"},{"role":"부기장","name":"이정훈","empNo":"P203021","passportNo":"M04183575","lastNameEn":"LEE","firstNameEn":"JEONGHUN","passportIssued":"2018-02-05","passport":"2028-02-05","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2026-03-31","usVisa":"2036-03-19","licenseType":"운송용","licenseNo":"11-007217","licenseIssued":"2020-11-23","limitB787":"B787","limitOther":"B737, C525","eptaGrade":"4","epta":"2027-02-05","eptaPeriod":"1년","medicalIssued":"2026-03-23","medical":"2027-03-31","radioIssued":"2025-06-02","radio":"2030-06-01"},{"role":"부기장","name":"최재원","empNo":"P223003","passportNo":"M363U8419","lastNameEn":"CHOI","firstNameEn":"JAEONE","passportIssued":"2023-11-15","passport":"2033-11-15","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2024-02-21","usVisa":"2034-02-19","licenseType":"사업용","licenseNo":"12-009788","licenseIssued":"2022-08-29","limitB787":"B787","limitOther":"A320, A350, C525","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-12-04","medical":"2026-12-31","radioIssued":"2023-01-11","radio":"2028-01-10"},{"role":"부기장","name":"이상호","empNo":"P203014","passportNo":"M663Z8250","lastNameEn":"LEE","firstNameEn":"SANGHO","passportIssued":"2026-05-11","passport":"2036-05-11","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2016-11-30","usVisa":"2026-11-28","licenseType":"사업용","licenseNo":"12-009610","licenseIssued":"2021-12-20","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2028-02-04","eptaPeriod":"1년","medicalIssued":"2025-06-19","medical":"2026-06-30","radioIssued":"2024-02-15","radio":"2029-02-14"},{"role":"부기장","name":"정상균","empNo":"P223012","passportNo":"M084D9491","lastNameEn":"JUNG","firstNameEn":"SANG GYUN","passportIssued":"2024-12-17","passport":"2034-12-17","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-05-23","usVisa":"2032-05-19","licenseType":"사업용","licenseNo":"12-010885","licenseIssued":"2022-11-08","limitB787":"B787","limitOther":"A320","eptaGrade":"4","epta":"2029-07-02","eptaPeriod":"1년","medicalIssued":"2026-03-10","medical":"2027-03-31","radioIssued":"2025-08-26","radio":"2030-08-25"},{"role":"부기장","name":"최우석","empNo":"P233010","passportNo":"M05887380","lastNameEn":"CHOI","firstNameEn":"USEOK","passportIssued":"2024-10-07","passport":"2034-10-07","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2023-04-19","usVisa":"2033-04-17","licenseType":"사업용","licenseNo":"12-013782","licenseIssued":"2022-08-26","limitB787":"B787","limitOther":"C525","eptaGrade":"5","epta":"2028-11-04","eptaPeriod":"1년","medicalIssued":"2025-09-19","medical":"2026-09-30","radioIssued":"2024-11-04","radio":"2029-11-03"},{"role":"부기장","name":"박태을","empNo":"P233002","passportNo":"M30762673","lastNameEn":"PARK","firstNameEn":"TAE EUL","passportIssued":"2024-08-07","passport":"2034-08-07","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2023-05-10","usVisa":"2033-05-08","licenseType":"사업용","licenseNo":"12-011385","licenseIssued":"2022-12-14","limitB787":"B787","limitOther":"B737, C525","eptaGrade":"4","epta":"2029-05-08","eptaPeriod":"1년","medicalIssued":"2025-11-03","medical":"2026-11-30","radioIssued":"2025-10-23","radio":"2030-10-22"},{"role":"부기장","name":"배기현","empNo":"P233003","passportNo":"M292B0698","lastNameEn":"BAE","firstNameEn":"KIHYUN","passportIssued":"2023-01-10","passport":"2033-01-10","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2023-05-10","usVisa":"2033-05-08","licenseType":"사업용","licenseNo":"12-013048","licenseIssued":"2022-05-25","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2028-03-26","eptaPeriod":"1년","medicalIssued":"2025-09-11","medical":"2026-09-30","radioIssued":"2022-03-25","radio":"2027-03-24"},{"role":"부기장","name":"이은철","empNo":"P233005","passportNo":"M44571767","lastNameEn":"LEE","firstNameEn":"EUNCHEOL","passportIssued":"2016-12-23","passport":"2026-12-23","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2023-05-10","usVisa":"2033-05-08","licenseType":"사업용","licenseNo":"12-013972","licenseIssued":"2022-10-21","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2028-03-02","eptaPeriod":"1년","medicalIssued":"2025-10-14","medical":"2026-10-31","radioIssued":"2022-04-02","radio":"2027-04-01"},{"role":"부기장","name":"이호석","empNo":"P233007","passportNo":"M56685816","lastNameEn":"LEE","firstNameEn":"HOSEOK","passportIssued":"2024-08-22","passport":"2034-08-22","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2023-05-10","usVisa":"2033-05-08","licenseType":"사업용","licenseNo":"12-012493","licenseIssued":"2022-10-26","limitB787":"B787","limitOther":"B737, C525","eptaGrade":"4","epta":"2026-09-14","eptaPeriod":"1년","medicalIssued":"2025-09-18","medical":"2026-09-30","radioIssued":"2022-10-26","radio":"2027-10-25"},{"role":"부기장","name":"이준오","empNo":"P233006","passportNo":"M457K4704","lastNameEn":"LEE","firstNameEn":"JUNOH","passportIssued":"2025-09-09","passport":"2035-09-09","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2023-05-10","usVisa":"2033-05-08","licenseType":"사업용","licenseNo":"12-012622","licenseIssued":"2021-09-09","limitB787":"B787","limitOther":"C525","eptaGrade":"5","epta":"2028-01-01","eptaPeriod":"1년","medicalIssued":"2025-09-05","medical":"2026-09-30","radioIssued":"2023-03-19","radio":"2028-03-18"},{"role":"부기장","name":"홍인식","empNo":"P233032","passportNo":"M22311713","lastNameEn":"HONG","firstNameEn":"IN SIK","passportIssued":"2024-03-21","passport":"2034-03-21","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2023-06-20","usVisa":"2033-06-15","licenseType":"사업용","licenseNo":"12-011793","licenseIssued":"2021-06-11","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2027-08-06","eptaPeriod":"1년","medicalIssued":"2025-06-05","medical":"2026-06-30","radioIssued":"2023-08-14","radio":"2028-08-13"},{"role":"부기장","name":"구상회","empNo":"P233027","passportNo":"M922G9638","lastNameEn":"GU","firstNameEn":"SANGHOI","passportIssued":"2022-09-14","passport":"2032-09-14","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2023-06-20","usVisa":"2033-06-15","licenseType":"사업용","licenseNo":"12-013306","licenseIssued":"2022-11-10","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2028-11-08","eptaPeriod":"1년","medicalIssued":"2026-02-12","medical":"2027-02-28","radioIssued":"2023-02-22","radio":"2028-02-21"},{"role":"부기장","name":"김나성","empNo":"P233038","passportNo":"M85764081","lastNameEn":"KIM","firstNameEn":"NASUNG","passportIssued":"2024-06-04","passport":"2034-06-04","usVisaCD":"X","usVisaB1B2":"X","usVisaIssued":"이중국적","usVisa":"이중국적","licenseType":"사업용","licenseNo":"12-013568","licenseIssued":"2023-05-23","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2029-01-20","eptaPeriod":"1년","medicalIssued":"2025-10-01","medical":"2026-10-31","radioIssued":"2025-08-30","radio":"2030-08-29"},{"role":"부기장","name":"김영석","empNo":"P233039","passportNo":"M011B3163","lastNameEn":"KIM","firstNameEn":"YOUNGSUK","passportIssued":"2022-09-19","passport":"2032-09-19","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2024-01-12","usVisa":"2034-01-01","licenseType":"사업용","licenseNo":"12-012321","licenseIssued":"2022-06-24","limitB787":"B787","limitOther":"B737, C525","eptaGrade":"5","epta":"2031-07-08","eptaPeriod":"1년","medicalIssued":"2026-03-17","medical":"2027-03-31","radioIssued":"2023-04-22","radio":"2028-04-21"},{"role":"부기장","name":"나종찬","empNo":"P233040","passportNo":"M14565223","lastNameEn":"NA","firstNameEn":"JONG CHAN","passportIssued":"2017-10-13","passport":"2027-10-13","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2024-01-03","usVisa":"2034-01-01","licenseType":"사업용","licenseNo":"12-014386","licenseIssued":"2023-03-07","limitB787":"B787","limitOther":"C525","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-10-27","medical":"2026-10-31","radioIssued":"2023-05-17","radio":"2028-05-16"},{"role":"부기장","name":"박준회","empNo":"P233041","passportNo":"M34133898","lastNameEn":"PARK","firstNameEn":"JOONHOI","passportIssued":"2017-07-11","passport":"2027-07-11","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2024-01-03","usVisa":"2034-01-01","licenseType":"사업용","licenseNo":"12-014663","licenseIssued":"2023-05-30","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2029-04-24","eptaPeriod":"1년","medicalIssued":"2026-03-10","medical":"2027-03-31","radioIssued":"2023-05-24","radio":"2028-05-23"},{"role":"부기장","name":"소병규","empNo":"P233042","passportNo":"M100U3314","lastNameEn":"SO","firstNameEn":"BYUNGKYU","passportIssued":"2023-11-03","passport":"2033-11-03","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2024-01-29","usVisa":"2034-01-25","licenseType":"사업용","licenseNo":"12-014023","licenseIssued":"2022-12-14","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2028-12-12","eptaPeriod":"1년","medicalIssued":"2025-05-08","medical":"2026-05-31","radioIssued":"2025-05-21","radio":"2030-05-20"},{"role":"부기장","name":"윤정훈","empNo":"P233043","passportNo":"M20502504","lastNameEn":"YOON","firstNameEn":"JEONGHOON","passportIssued":"2017-02-17","passport":"2027-02-17","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2024-01-29","usVisa":"2034-01-25","licenseType":"사업용","licenseNo":"12-015556","licenseIssued":"2023-06-28","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2028-09-30","eptaPeriod":"1년","medicalIssued":"2026-04-10","medical":"2027-04-30","radioIssued":"2023-03-22","radio":"2028-03-21"},{"role":"부기장","name":"이관호","empNo":"P233044","passportNo":"M620M6217","lastNameEn":"LEE","firstNameEn":"KWANHO","passportIssued":"2023-11-03","passport":"2033-11-03","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2024-01-29","usVisa":"2034-01-25","licenseType":"사업용","licenseNo":"12-014555","licenseIssued":"2023-06-22","limitB787":"B787","limitOther":"C525","eptaGrade":"5","epta":"2029-07-04","eptaPeriod":"1년","medicalIssued":"2025-10-21","medical":"2026-10-31","radioIssued":"2025-03-25","radio":"2030-03-24"},{"role":"부기장","name":"이하정","empNo":"P233045","passportNo":"M449X5456","lastNameEn":"LEE","firstNameEn":"HAJEONG","passportIssued":"2025-09-02","passport":"2035-09-02","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-04-04","usVisa":"2032-04-03","licenseType":"사업용","licenseNo":"12-012855","licenseIssued":"2023-06-15","limitB787":"B787","limitOther":"C525","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-11-21","medical":"2026-11-30","radioIssued":"2025-08-31","radio":"2030-08-30"},{"role":"부기장","name":"정인보","empNo":"P233046","passportNo":"M21125630","lastNameEn":"JUNG","firstNameEn":"INBO","passportIssued":"2017-08-03","passport":"2027-08-03","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2024-01-03","usVisa":"2034-01-01","licenseType":"사업용","licenseNo":"12-013197","licenseIssued":"2022-10-27","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2028-04-10","eptaPeriod":"1년","medicalIssued":"2025-08-08","medical":"2026-08-31","radioIssued":"2024-04-03","radio":"2029-04-02"},{"role":"부기장","name":"정진규","empNo":"P233047","passportNo":"M838J3120","lastNameEn":"JEONG","firstNameEn":"JINKYU","passportIssued":"2023-11-06","passport":"2033-11-06","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2024-01-29","usVisa":"2034-01-25","licenseType":"사업용","licenseNo":"12-014388","licenseIssued":"2021-12-13","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2026-09-04","eptaPeriod":"1년","medicalIssued":"2025-10-10","medical":"2026-10-31","radioIssued":"2025-06-27","radio":"2030-06-26"},{"role":"부기장","name":"정한솔","empNo":"P233048","passportNo":"M201K8147","lastNameEn":"JEONG","firstNameEn":"HAN SOL","passportIssued":"2025-03-17","passport":"2035-03-17","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2024-01-04","usVisa":"2034-01-02","licenseType":"사업용","licenseNo":"12-014481","licenseIssued":"2023-06-09","limitB787":"B787","limitOther":"C525","eptaGrade":"5","epta":"2028-12-09","eptaPeriod":"1년","medicalIssued":"2026-05-04","medical":"2027-05-31","radioIssued":"2026-02-16","radio":"2031-02-15"},{"role":"부기장","name":"허완","empNo":"P233049","passportNo":"M474G8942","lastNameEn":"HUH","firstNameEn":"WAN","passportIssued":"2025-10-21","passport":"2035-10-21","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2024-01-03","usVisa":"2034-01-01","licenseType":"사업용","licenseNo":"12-013244","licenseIssued":"2022-10-31","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2028-05-24","eptaPeriod":"1년","medicalIssued":"2025-10-30","medical":"2026-10-31","radioIssued":"2023-12-20","radio":"2028-12-19"},{"role":"부기장","name":"황성민","empNo":"P243019","passportNo":"M346D0248","lastNameEn":"HWANG","firstNameEn":"SEONGMIN","passportIssued":"2022-02-23","passport":"2032-02-23","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2018-02-01","usVisa":"2028-01-31","licenseType":"운송용","licenseNo":"11-008591","licenseIssued":"2023-12-08","limitB787":"B787","limitOther":"B737, C525","eptaGrade":"4","epta":"2029-04-01","eptaPeriod":"1년","medicalIssued":"2026-03-19","medical":"2027-03-31","radioIssued":"2023-11-18","radio":"2028-11-17"},{"role":"부기장","name":"이정곤","empNo":"P243017","passportNo":"M247Q9820","lastNameEn":"LEE","firstNameEn":"JEONG KON","passportIssued":"2022-08-29","passport":"2032-08-29","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2018-05-08","usVisa":"2028-05-07","licenseType":"운송용","licenseNo":"11-007746","licenseIssued":"2023-11-15","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"4","epta":"2027-04-09","eptaPeriod":"1년","medicalIssued":"2026-05-11","medical":"2027-05-31","radioIssued":"2024-05-10","radio":"2029-04-30"},{"role":"부기장","name":"이상규","empNo":"P243016","passportNo":"M539B0457","lastNameEn":"YI","firstNameEn":"SANGKYU","passportIssued":"2024-03-07","passport":"2034-03-07","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-08-16","usVisa":"2032-08-11","licenseType":"사업용","licenseNo":"11-011592","licenseIssued":"2023-12-06","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"4","epta":"2026-12-17","eptaPeriod":"1년","medicalIssued":"2026-03-19","medical":"2027-05-31","radioIssued":"2023-02-27","radio":"2028-02-26"},{"role":"부기장","name":"김상연","empNo":"P243011","passportNo":"M802H1498","lastNameEn":"KIM","firstNameEn":"SANGYEON","passportIssued":"2025-11-03","passport":"2035-11-03","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2022-08-04","usVisa":"2032-08-02","licenseType":"운송용","licenseNo":"12-011662","licenseIssued":"2022-11-24","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"5","epta":"2029-02-03","eptaPeriod":"1년","medicalIssued":"2025-09-01","medical":"2026-09-30","radioIssued":"2022-02-17","radio":"2027-02-16"},{"role":"부기장","name":"조준상","empNo":"P243018","passportNo":"M04333612","lastNameEn":"JO","firstNameEn":"JUNSANG","passportIssued":"2024-06-14","passport":"2034-06-14","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-09-15","usVisa":"2032-09-13","licenseType":"운송용","licenseNo":"11-008366","licenseIssued":"2023-07-18","limitB787":"B787","limitOther":"A320","eptaGrade":"4","epta":"2026-09-16","eptaPeriod":"1년","medicalIssued":"2025-07-28","medical":"2026-07-31","radioIssued":"2021-07-01","radio":"2026-06-30"},{"role":"부기장","name":"문종태","empNo":"P243013","passportNo":"M060N6413","lastNameEn":"MOON","firstNameEn":"JONG TAE","passportIssued":"2022-12-05","passport":"2032-12-05","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-06-10","usVisa":"2032-06-09","licenseType":"사업용","licenseNo":"12-009736","licenseIssued":"2022-09-21","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"4","epta":"2028-11-04","eptaPeriod":"1년","medicalIssued":"2026-03-24","medical":"2027-03-31","radioIssued":"2026-01-10","radio":"2031-01-09"},{"role":"부기장","name":"박성욱","empNo":"P243014","passportNo":"M493C5093","lastNameEn":"PARK","firstNameEn":"SEONGWOOK","passportIssued":"2023-10-06","passport":"2033-10-06","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-08-01","usVisa":"2035-07-28","licenseType":"사업용","licenseNo":"12-009816","licenseIssued":"2019-07-30","limitB787":"B787","limitOther":"A320, A350, C525","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2026-04-15","medical":"2027-04-30","radioIssued":"2026-05-20","radio":"2031-05-19"},{"role":"부기장","name":"김현수","empNo":"P243012","passportNo":"M43249488","lastNameEn":"KIM","firstNameEn":"HYUNSOO","passportIssued":"2019-04-17","passport":"2029-04-17","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-05-23","usVisa":"2032-05-19","licenseType":"운송용","licenseNo":"11-007658","licenseIssued":"2023-09-15","limitB787":"B787","limitOther":"A320","eptaGrade":"4","epta":"2026-11-18","eptaPeriod":"1년","medicalIssued":"2026-03-09","medical":"2027-03-31","radioIssued":"2021-07-06","radio":"2026-07-05"},{"role":"부기장","name":"박영욱","empNo":"P243015","passportNo":"M63311044","lastNameEn":"PARK","firstNameEn":"YOUNGWOOK","passportIssued":"2018-10-01","passport":"2028-10-01","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-03-28","usVisa":"2029-03-27","licenseType":"운송용","licenseNo":"11-008565","licenseIssued":"2023-11-07","limitB787":"B787","limitOther":"A320","eptaGrade":"4","epta":"2026-10-26","eptaPeriod":"1년","medicalIssued":"2026-03-10","medical":"2027-03-31","radioIssued":"2026-02-26","radio":"2031-02-25"},{"role":"부기장","name":"김성훈","empNo":"P243023","passportNo":"M057Z6854","lastNameEn":"KIM","firstNameEn":"SEONGHUN","passportIssued":"2023-07-05","passport":"2033-07-05","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-04-02","usVisa":"2029-04-01","licenseType":"운송용","licenseNo":"11-008196","licenseIssued":"2024-04-22","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"4","epta":"2027-10-03","eptaPeriod":"1년","medicalIssued":"2026-02-05","medical":"2027-02-28","radioIssued":"2023-01-03","radio":"2028-01-02"},{"role":"부기장","name":"이학현","empNo":"P243024","passportNo":"M39439450","lastNameEn":"LEE","firstNameEn":"HAKHYUN","passportIssued":"2020-05-22","passport":"2030-05-22","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2018-02-02","usVisa":"2028-02-01","licenseType":"운송용","licenseNo":"11-008583","licenseIssued":"2023-11-21","limitB787":"B787","limitOther":"B737, C525","eptaGrade":"4","epta":"2028-12-15","eptaPeriod":"1년","medicalIssued":"2025-12-15","medical":"2026-12-31","radioIssued":"2024-06-06","radio":"2029-06-05"},{"role":"부기장","name":"조석현","empNo":"P243025","passportNo":"M5929878","lastNameEn":"JO","firstNameEn":"SEOKHYUN","passportIssued":"2020-05-28","passport":"2030-05-28","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-01-18","usVisa":"2029-01-16","licenseType":"사업용","licenseNo":"11-011597","licenseIssued":"2023-08-30","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"4","epta":"2026-10-22","eptaPeriod":"1년","medicalIssued":"2026-01-14","medical":"2027-01-31","radioIssued":"2026.05.13","radio":"2031.05.12"},{"role":"부기장","name":"한재훈","empNo":"P243026","passportNo":"M704U1873","lastNameEn":"HAN","firstNameEn":"JAEHOON","passportIssued":"2023-05-31","passport":"2033-05-31","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-01-18","usVisa":"2029-01-16","licenseType":"운송용","licenseNo":"11-008414","licenseIssued":"2023-10-30","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"5","epta":"2029-11-30","eptaPeriod":"1년","medicalIssued":"2026-01-09","medical":"2027-01-31","radioIssued":"2022-02-13","radio":"2027-02-12"},{"role":"부기장","name":"윤지열","empNo":"P243036","passportNo":"M63850278","lastNameEn":"YOON","firstNameEn":"JIYEOL","passportIssued":"2019-05-14","passport":"2029-05-14","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2017-09-22","usVisa":"2027-09-21","licenseType":"사업용","licenseNo":"12-010752","licenseIssued":"2022-04-06","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2028-04-27","eptaPeriod":"1년","medicalIssued":"2025-09-19","medical":"2026-09-30","radioIssued":"2021-06-20","radio":"2026-06-19"},{"role":"부기장","name":"최동찬","empNo":"P243037","passportNo":"M366G7405","lastNameEn":"CHOI","firstNameEn":"DONGCHAN","passportIssued":"2024-03-21","passport":"2034-03-21","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-06-18","usVisa":"2029-06-17","licenseType":"운송용","licenseNo":"11-008704","licenseIssued":"2024-04-11","limitB787":"B787","limitOther":"A320, CE500/CE560","eptaGrade":"4","epta":"2028-10-28","eptaPeriod":"1년","medicalIssued":"2025-12-23","medical":"2026-12-31","radioIssued":"2024-05-24","radio":"2029-05-23"},{"role":"부기장","name":"최윤준","empNo":"P243038","passportNo":"M89494503","lastNameEn":"CHOI","firstNameEn":"YOONJUN","passportIssued":"2019-03-11","passport":"2029-03-11","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-09-21","usVisa":"2032-09-19","licenseType":"사업용","licenseNo":"12-011833","licenseIssued":"2023-11-13","limitB787":"B787","limitOther":"A320, CE500/CE560","eptaGrade":"4","epta":"2026-12-15","eptaPeriod":"1년","medicalIssued":"2025-12-12","medical":"2026-12-31","radioIssued":"2022-10-26","radio":"2027-10-25"},{"role":"부기장","name":"박성진","empNo":"P243048","passportNo":"M43032590","lastNameEn":"PARK","firstNameEn":"SUNGJIN","passportIssued":"2017-06-23","passport":"2027-06-23","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-01-17","usVisa":"2029-01-16","licenseType":"사업용","licenseNo":"12-011483","licenseIssued":"2024-01-02","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"4","epta":"2027-01-09","eptaPeriod":"1년","medicalIssued":"2025-09-18","medical":"2026-09-30","radioIssued":"2026-01-20","radio":"2031-01-19"},{"role":"부기장","name":"이재일","empNo":"P243049","passportNo":"M10743453","lastNameEn":"LEE","firstNameEn":"JAEIL","passportIssued":"2018-03-22","passport":"2028-03-22","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-03-29","usVisa":"2029-03-27","licenseType":"운송용","licenseNo":"11-008711","licenseIssued":"2024-05-21","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"4","epta":"2026-10-22","eptaPeriod":"1년","medicalIssued":"2025-09-18","medical":"2026-09-30","radioIssued":"2024-07-03","radio":"2029-07-02"},{"role":"부기장","name":"이태호B","empNo":"P243050","passportNo":"M97090296","lastNameEn":"LEE","firstNameEn":"TAE-HO","passportIssued":"2021-12-07","passport":"2031-12-07","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-06-27","usVisa":"2032-06-23","licenseType":"운송용","licenseNo":"11-008809","licenseIssued":"2024-07-25","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-03-19","medical":"2027-03-31","radioIssued":"2026-0325","radio":"2031-03-24"},{"role":"부기장","name":"정범수","empNo":"P243051","passportNo":"M819Y4052","lastNameEn":"JUNG","firstNameEn":"BUMSOO","passportIssued":"2024-07-09","passport":"2034-07-09","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2021-04-30","usVisa":"2031-04-29","licenseType":"운송용","licenseNo":"11-008684","licenseIssued":"2024-10-24","limitB787":"B787","limitOther":"B737, C525","eptaGrade":"4","epta":"2028-01-06","eptaPeriod":"1년","medicalIssued":"2025-10-17","medical":"2026-10-31","radioIssued":"2025-05-15","radio":"2030-05-14"},{"role":"부기장","name":"최정웅","empNo":"P243052","passportNo":"M36753775","lastNameEn":"CHOI","firstNameEn":"JEONGWOONG","passportIssued":"2019-10-11","passport":"2029-10-11","usVisaCD":"O","usVisaB1B2":"X","usVisaIssued":"2024-12-20","usVisa":"2034-12-17","licenseType":"사업용","licenseNo":"12-010105","licenseIssued":"2023-04-13","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"4","epta":"2029-08-11","eptaPeriod":"1년","medicalIssued":"2025-09-18","medical":"2026-09-30","radioIssued":"2024-06-26","radio":"2029-06-25"},{"role":"부기장","name":"조성진","empNo":"P604002","passportNo":"M78635003","lastNameEn":"CHO","firstNameEn":"SUNG-JIN","passportIssued":"2020-09-15","passport":"2030-09-15","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-04-03","usVisa":"2035-03-31","licenseType":"운송용","licenseNo":"11-007910","licenseIssued":"2023-04-05","limitB787":"B787","limitOther":"B737,C525","eptaGrade":"4","epta":"2029-05-11","eptaPeriod":"1년","medicalIssued":"2025-05-14","medical":"2026-05-31","radioIssued":"2026-01-30","radio":"2031-01-29"},{"role":"부기장","name":"김윤현","empNo":"P604105","passportNo":"M13632573","lastNameEn":"KIM","firstNameEn":"YUNHYUN","passportIssued":"2020-01-15","passport":"2030-01-15","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-04-03","usVisa":"2035-03-31","licenseType":"운송용","licenseNo":"11-007823","licenseIssued":"2022-09-02","limitB787":"B787","limitOther":"B737,C525","eptaGrade":"4","epta":"2028-11-10","eptaPeriod":"1년","medicalIssued":"2026-01-22","medical":"2027-01-31","radioIssued":"2025-07-17","radio":"2030-07-16"},{"role":"부기장","name":"이정준","empNo":"P701851","passportNo":"M38067541","lastNameEn":"LEE","firstNameEn":"JUNGJUN","passportIssued":"2021-11-02","passport":"2031-11-02","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-04-03","usVisa":"2035-03-31","licenseType":"사업용","licenseNo":"12-010107","licenseIssued":"2023-01-30","limitB787":"B787","limitOther":"B737,C525","eptaGrade":"4","epta":"2029-04-06","eptaPeriod":"1년","medicalIssued":"2025-07-28","medical":"2026-07-31","radioIssued":"2026-04-29","radio":"2031-04-28"},{"role":"부기장","name":"조병준","empNo":"P702330","passportNo":"M015W6609","lastNameEn":"CHO","firstNameEn":"BYUNG-JUN","passportIssued":"2024-07-22","passport":"2034-07-22","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2018-01-30","usVisa":"2028-01-29","licenseType":"운송용","licenseNo":"11-008377","licenseIssued":"2023-11-17","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2027-01-29","eptaPeriod":"1년","medicalIssued":"2025-07-07","medical":"2026-07-31","radioIssued":"2022-04-01","radio":"2027-03-31"},{"role":"부기장","name":"정성원","empNo":"P702816","passportNo":"M556B6044","lastNameEn":"JUNG","firstNameEn":"SUNGWON","passportIssued":"2025-04-03","passport":"2035-04-03","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-02-15","usVisa":"2029-02-14","licenseType":"사업용","licenseNo":"12-006420","licenseIssued":"2024-05-03","limitB787":"B787","limitOther":"BD500","eptaGrade":"4","epta":"2027-06-06","eptaPeriod":"1년","medicalIssued":"2025-11-03","medical":"2026-11-30","radioIssued":"2022-10-05","radio":"2027-10-04"},{"role":"부기장","name":"김영욱","empNo":"P803443","passportNo":"M446C5527","lastNameEn":"KIM","firstNameEn":"YEONG UK","passportIssued":"2025-04-04","passport":"2035-04-04","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-02-25","usVisa":"2029-02-24","licenseType":"사업용","licenseNo":"12-011559","licenseIssued":"2025-02-06","limitB787":"B787","limitOther":"BD500,C525","eptaGrade":"4","epta":"2028-03-02","eptaPeriod":"1년","medicalIssued":"2025-12-03","medical":"2026-12-31","radioIssued":"2025-11-28","radio":"2030-11-27"},{"role":"부기장","name":"심효영","empNo":"P803852","passportNo":"M706P6713","lastNameEn":"SIM","firstNameEn":"HYO-YOUNG","passportIssued":"2025-04-01","passport":"2035-04-01","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-03-25","usVisa":"2029-03-24","licenseType":"운송용","licenseNo":"11-008552","licenseIssued":"2025-02-06","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2028-05-07","eptaPeriod":"1년","medicalIssued":"2025-12-09","medical":"2026-12-31","radioIssued":"2026-01-22","radio":"2031-01-21"},{"role":"부기장","name":"남성식","empNo":"P803303","passportNo":"M172W5225","lastNameEn":"NAM","firstNameEn":"SUNGSIK","passportIssued":"2023-02-14","passport":"2033-02-14","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-04-15","usVisa":"2029-04-10","licenseType":"운송용","licenseNo":"11-008435","licenseIssued":"2025-02-21","limitB787":"B787","limitOther":"B737,C525","eptaGrade":"4","epta":"2028-03-25","eptaPeriod":"1년","medicalIssued":"2025-08-27","medical":"2026-08-31","radioIssued":"2024-01-16","radio":"2029-01-15"},{"role":"부기장","name":"김동우B","empNo":"P900076","passportNo":"M10867991","lastNameEn":"KIM","firstNameEn":"DONG WOO","passportIssued":"2020-02-11","passport":"2030-02-11","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-03-07","usVisa":"2029-03-06","licenseType":"사업용","licenseNo":"12-011284","licenseIssued":"2023-06-07","limitB787":"B787","limitOther":"B737,C525","eptaGrade":"4","epta":"2026-08-10","eptaPeriod":"1년","medicalIssued":"2025-07-04","medical":"2026-07-31","radioIssued":"2022-03-19","radio":"2027-03-18"},{"role":"부기장","name":"손창우","empNo":"P900102","passportNo":"M788K8829","lastNameEn":"SON","firstNameEn":"CHANGWOO","passportIssued":"2023-11-06","passport":"2033-11-06","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-03-20","usVisa":"2029-03-19","licenseType":"사업용","licenseNo":"12-012001","licenseIssued":"2023-11-03","limitB787":"B787","limitOther":"B737,C525","eptaGrade":"4","epta":"2027-01-12","eptaPeriod":"1년","medicalIssued":"2025-07-17","medical":"2026-07-31","radioIssued":"2026-04-13","radio":"2031-04-12"},{"role":"부기장","name":"김태현","empNo":"P253002","passportNo":"M18138995","lastNameEn":"KIM","firstNameEn":"TAEHYUN","passportIssued":"2018-11-22","passport":"2028-11-22","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-01-21","usVisa":"2032-01-19","licenseType":"사업용","licenseNo":"12-011821","licenseIssued":"2023-10-26","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2026-12-20","eptaPeriod":"1년","medicalIssued":"2025-11-21","medical":"2026-11-30","radioIssued":"2022-09-26","radio":"2027-09-25"},{"role":"부기장","name":"박의충","empNo":"P253003","passportNo":"M202S3787","lastNameEn":"PARK","firstNameEn":"UICHUNG","passportIssued":"2024-02-13","passport":"2034-02-13","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2022-07-26","usVisa":"2032-07-24","licenseType":"운송용","licenseNo":"11-009019","licenseIssued":"2025-02-11","limitB787":"B787","limitOther":"A320","eptaGrade":"4","epta":"2027-03-21","eptaPeriod":"1년","medicalIssued":"2026-01-07","medical":"2027-01-31","radioIssued":"2024-11-21","radio":"2029-11-20"},{"role":"부기장","name":"이동건","empNo":"P253004","passportNo":"M23035162","lastNameEn":"LEE","firstNameEn":"DONGGUN","passportIssued":"2017-01-23","passport":"2027-01-23","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-07-31","usVisa":"2029-07-29","licenseType":"운송용","licenseNo":"11-009104","licenseIssued":"2025-03-26","limitB787":"B787","limitOther":"B737, C525","eptaGrade":"5","epta":"2030-12-12","eptaPeriod":"1년","medicalIssued":"2025-12-11","medical":"2026-12-31","radioIssued":"2022-08-20","radio":"2027-08-19"},{"role":"부기장","name":"이보행","empNo":"P253005","passportNo":"M277T1770","lastNameEn":"LEE","firstNameEn":"BOHAENG","passportIssued":"2021-12-22","passport":"2031-12-22","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2019-07-30","usVisa":"2029-07-29","licenseType":"사업용","licenseNo":"12-012790","licenseIssued":"2025-03-31","limitB787":"B787","limitOther":"B737","eptaGrade":"6","epta":"영구","eptaPeriod":"1년","medicalIssued":"2025-11-07","medical":"2026-11-30","radioIssued":"2022-02-23","radio":"2027-02-22"},{"role":"부기장","name":"이재봉","empNo":"P253006","passportNo":"M43081005","lastNameEn":"LEE","firstNameEn":"JAE BONG","passportIssued":"2020-02-11","passport":"2030-02-11","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2018-10-04","usVisa":"2028-10-01","licenseType":"사업용","licenseNo":"12-011527","licenseIssued":"2022-11-03","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2029-01-02","eptaPeriod":"1년","medicalIssued":"2025-07-04","medical":"2026-07-31","radioIssued":"2022-06-13","radio":"2027-06-12"},{"role":"부기장","name":"임창훈","empNo":"P253007","passportNo":"M175G8311","lastNameEn":"LEE","firstNameEn":"CHANG HUN","passportIssued":"2022-11-22","passport":"2032-11-22","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2018-10-04","usVisa":"2028-10-01","licenseType":"사업용","licenseNo":"12-011399","licenseIssued":"2022-06-17","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2028-11-08","eptaPeriod":"1년","medicalIssued":"2026-05-13","medical":"2027-05-31","radioIssued":"2022-04-18","radio":"2027-04-17"},{"role":"부기장","name":"홍경수","empNo":"P253008","passportNo":"M58995419","lastNameEn":"HONG","firstNameEn":"KYUNGSOO","passportIssued":"2026-05-04","passport":"2036-05-04","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-06-17","usVisa":"2035-06-12","licenseType":"사업용","licenseNo":"12-010172","licenseIssued":"2023-01-25","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"4","epta":"2029-02-12","eptaPeriod":"1년","medicalIssued":"2026-04-14","medical":"2027-04-30","radioIssued":"2023-11-09","radio":"2028-11-08"},{"role":"부기장","name":"권기태","empNo":"P253011","passportNo":"M62848165","lastNameEn":"KWON","firstNameEn":"KI TAE","passportIssued":"2017-10-25","passport":"2027-10-25","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-08-19","usVisa":"2035-08-13","licenseType":"사업용","licenseNo":"12-012998","licenseIssued":"2024-01-22","limitB787":"B787","limitOther":"C525","eptaGrade":"5","epta":"2029-11-12","eptaPeriod":"1년","medicalIssued":"2025-09-12","medical":"2026-09-30","radioIssued":"2024-10-24","radio":"2029-10-23"},{"role":"부기장","name":"김우창","empNo":"P253013","passportNo":"M90171402","lastNameEn":"KIM","firstNameEn":"WOOCHANG","passportIssued":"2018-11-26","passport":"2028-11-26","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-08-19","usVisa":"2035-08-12","licenseType":"사업용","licenseNo":"12-014416","licenseIssued":"2024-11-29","limitB787":"B787","limitOther":"C525","eptaGrade":"5","epta":"2030-11-25","eptaPeriod":"1년","medicalIssued":"2026-01-14","medical":"2027-01-31","radioIssued":"2025-06-26","radio":"2030-06-25"},{"role":"부기장","name":"김정환","empNo":"P253014","passportNo":"M596C3253","lastNameEn":"KIM","firstNameEn":"JEONGHWAN","passportIssued":"2024-09-19","passport":"2034-09-19","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-08-19","usVisa":"2035-08-13","licenseType":"사업용","licenseNo":"12-015945","licenseIssued":"2024-09-03","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2026-09-10","eptaPeriod":"1년","medicalIssued":"2026-02-09","medical":"2027-02-28","radioIssued":"2024-02-11","radio":"2029-02-10"},{"role":"부기장","name":"안상진","empNo":"P253015","passportNo":"M295Q0152","lastNameEn":"AN","firstNameEn":"SANGJIN","passportIssued":"2025-03-26","passport":"2035-03-26","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-08-19","usVisa":"2035-08-12","licenseType":"사업용","licenseNo":"12-015483","licenseIssued":"2024-04-25","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2029-05-25","eptaPeriod":"1년","medicalIssued":"2026-03-10","medical":"2027-03-31","radioIssued":"2024-05-19","radio":"2029-05-18"},{"role":"부기장","name":"이민재","empNo":"P253017","passportNo":"M772X3961","lastNameEn":"LEE","firstNameEn":"MINJAE","passportIssued":"2024-09-11","passport":"2034-09-11","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-08-19","usVisa":"2035-08-13","licenseType":"사업용","licenseNo":"12-015878","licenseIssued":"2024-12-19","limitB787":"B787","limitOther":"B737","eptaGrade":"4","epta":"2027-03-12","eptaPeriod":"1년","medicalIssued":"2025-08-19","medical":"2026-08-31","radioIssued":"2021-12-27","radio":"2026-12-26"},{"role":"부기장","name":"장서연","empNo":"P253018","passportNo":"M990Y5560","lastNameEn":"JANG","firstNameEn":"SEO YOUN","passportIssued":"2025-05-26","passport":"2035-05-26","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-08-19","usVisa":"2035-08-13","licenseType":"사업용","licenseNo":"12-014447","licenseIssued":"2025-04-03","limitB787":"B787","limitOther":"C525","eptaGrade":"5","epta":"2028-02-23","eptaPeriod":"1년","medicalIssued":"2025-12-01","medical":"2026-12-31","radioIssued":"2023-05-23","radio":"2028-05-22"},{"role":"부기장","name":"한현재","empNo":"P253019","passportNo":"M217M0162","lastNameEn":"HAN","firstNameEn":"HYUNJAE","passportIssued":"2024-02-22","passport":"2034-02-22","usVisaCD":"O","usVisaB1B2":"-","usVisaIssued":"2025-08-19","usVisa":"2035-08-13","licenseType":"사업용","licenseNo":"12-015209","licenseIssued":"2024-11-18","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2027-11-11","eptaPeriod":"1년","medicalIssued":"2025-03-11","medical":"2027-03-31","radioIssued":"2024-12-27","radio":"2029-12-26"},{"role":"부기장","name":"현경원","empNo":"P253020","passportNo":"M03402981","lastNameEn":"HYEON","firstNameEn":"GYEONG WON","passportIssued":"2017-08-01","passport":"2027-08-01","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2025-08-19","usVisa":"2035-08-13","licenseType":"운송용","licenseNo":"11-008818","licenseIssued":"2024-08-07","limitB787":"B787","limitOther":"A320, C525","eptaGrade":"4","epta":"2027-11-11","eptaPeriod":"1년","medicalIssued":"2026-01-19","medical":"2027-01-31","radioIssued":"2022-03-22","radio":"2027-03-21"},{"role":"부기장","name":"김선우","empNo":"P263001","passportNo":"M300L9727","lastNameEn":"KIM","firstNameEn":"SUNWOO","passportIssued":"2023-01-23","passport":"2033-01-23","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2026-03-03","usVisa":"2036-02-23","licenseType":"사업용","licenseNo":"12-014888","licenseIssued":"2025-12-15","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2028-11-05","eptaPeriod":"1년","medicalIssued":"2025-12-13","medical":"2026-12-31","radioIssued":"2023-10-09","radio":"2028-10-08"},{"role":"부기장","name":"김영걸","empNo":"P263002","passportNo":"M268D5262","lastNameEn":"KIM","firstNameEn":"YOUNGGEOL","passportIssued":"2023-04-14","passport":"2033-04-14","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2026-03-06","usVisa":"2036-02-24","licenseType":"사업용","licenseNo":"12-011648","licenseIssued":"2024-10-24","limitB787":"","limitOther":"C525","eptaGrade":"4","epta":"2026-12-25","eptaPeriod":"1년","medicalIssued":"2025-12-18","medical":"2026-12-31","radioIssued":"2023-12-11","radio":"2028-12-10"},{"role":"부기장","name":"김창균","empNo":"P263003","passportNo":"M55878927","lastNameEn":"KIM","firstNameEn":"CHANGGYUN","passportIssued":"2019-01-04","passport":"2029-01-04","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2026-03-03","usVisa":"2036-02-23","licenseType":"사업용","licenseNo":"12-014865","licenseIssued":"2025-06-25","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2028-08-23","eptaPeriod":"1년","medicalIssued":"2025-12-26","medical":"2026-12-31","radioIssued":"2025-05-08","radio":"2030-05-07"},{"role":"부기장","name":"박성우","empNo":"P263004","passportNo":"M85538835","lastNameEn":"PARK","firstNameEn":"SUNGWOO","passportIssued":"2020-01-16","passport":"2030-01-16","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2026-03-06","usVisa":"2036-02-24","licenseType":"사업용","licenseNo":"12-016540","licenseIssued":"2025-09-04","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2027-10-11","eptaPeriod":"1년","medicalIssued":"2025-10-31","medical":"2026-10-31","radioIssued":"2022-06-17","radio":"2027-06-16"},{"role":"부기장","name":"박의명","empNo":"P263005","passportNo":"M410Y5795","lastNameEn":"PARK","firstNameEn":"EIMYOUNG","passportIssued":"2023-06-30","passport":"2033-06-30","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2026-03-06","usVisa":"2036-02-26","licenseType":"사업용","licenseNo":"12-014673","licenseIssued":"2025-05-23","limitB787":"B787","limitOther":"C525","eptaGrade":"4","epta":"2028-01-22","eptaPeriod":"1년","medicalIssued":"2025-08-14","medical":"2026-08-31","radioIssued":"2021-06-14","radio":"2026-06-13"},{"role":"부기장","name":"배재욱","empNo":"P263006","passportNo":"M576L8126","lastNameEn":"BAE","firstNameEn":"JAEUK","passportIssued":"2023-07-06","passport":"2033-07-06","usVisaCD":"O","usVisaB1B2":"-","usVisaIssued":"2026-03-05","usVisa":"2036-02-25","licenseType":"사업용","licenseNo":"12-016011","licenseIssued":"2025-07-25","limitB787":"","limitOther":"B737","eptaGrade":"5","epta":"2030-12-25","eptaPeriod":"1년","medicalIssued":"2025-10-24","medical":"2026-10-31","radioIssued":"2023-03-07","radio":"2028-03-06"},{"role":"부기장","name":"채상원","empNo":"P263007","passportNo":"M572X1847","lastNameEn":"CHAI","firstNameEn":"SANGWON","passportIssued":"2023-12-23","passport":"2033-12-23","usVisaCD":"O","usVisaB1B2":"-","usVisaIssued":"2026-03-05","usVisa":"2036-02-25","licenseType":"사업용","licenseNo":"12-016187","licenseIssued":"2026-01-05","limitB787":"","limitOther":"C525","eptaGrade":"4","epta":"2026-12-11","eptaPeriod":"1년","medicalIssued":"2025-12-17","medical":"2026-12-31","radioIssued":"2025-03-01","radio":"2030-02-28"},{"role":"부기장","name":"허노준","empNo":"P263008","passportNo":"M837T4250","lastNameEn":"HEO","firstNameEn":"HEO","passportIssued":"2023-05-22","passport":"2033-05-22","usVisaCD":"O","usVisaB1B2":"O","usVisaIssued":"2026-02-27","usVisa":"2036-02-22","licenseType":"사업용","licenseNo":"12-016214","licenseIssued":"2025-01-16","limitB787":"","limitOther":"C525","eptaGrade":"4","epta":"2027-11-06","eptaPeriod":"1년","medicalIssued":"2025-08-19","medical":"2026-08-31","radioIssued":"2023-09-16","radio":"2028-09-15"},{"role":"부기장","name":"김동일","empNo":"P263014","passportNo":"M06989804","lastNameEn":"KIM","firstNameEn":"DONG IL","passportIssued":"2017-08-22","passport":"2027-08-22","usVisaCD":"X","usVisaB1B2":"O","usVisaIssued":"","usVisa":"","licenseType":"사업용","licenseNo":"12-013222","licenseIssued":"2023-12-14","limitB787":"","limitOther":"B737","eptaGrade":"4","epta":"2026-11-01","eptaPeriod":"2년","medicalIssued":"2026-02-20","medical":"2027-02-28","radioIssued":"2023-10-18","radio":"2028-10-17"},{"role":"부기장","name":"송승호","empNo":"P263015","passportNo":"M025R9220","lastNameEn":"SONG","firstNameEn":"SEUNGHO","passportIssued":"2024-01-29","passport":"2034-01-29","usVisaCD":"X","usVisaB1B2":"X","usVisaIssued":"","usVisa":"","licenseType":"사업용","licenseNo":"12-015697","licenseIssued":"2025-09-01","limitB787":"","limitOther":"B737","eptaGrade":"5","epta":"2031-08-27","eptaPeriod":"3년","medicalIssued":"2026-02-02","medical":"2027-02-28","radioIssued":"2023-07-24","radio":"2028-08-23"},{"role":"부기장","name":"송호섭","empNo":"P263016","passportNo":"M14902022","lastNameEn":"SONG","firstNameEn":"HO SEOP","passportIssued":"2020-01-06","passport":"2030-01-06","usVisaCD":"X","usVisaB1B2":"X","usVisaIssued":"","usVisa":"","licenseType":"사업용","licenseNo":"12-015794","licenseIssued":"2025-01-22","limitB787":"","limitOther":"B737","eptaGrade":"4","epta":"2027-11-21","eptaPeriod":"4년","medicalIssued":"2026-02-24","medical":"2027-02-28","radioIssued":"2021-12-20","radio":"2026-12-19"},{"role":"부기장","name":"신규철","empNo":"P263017","passportNo":"M31868892","lastNameEn":"SHIN","firstNameEn":"KYU CHUL","passportIssued":"2018-05-21","passport":"2028-05-21","usVisaCD":"X","usVisaB1B2":"X","usVisaIssued":"","usVisa":"","licenseType":"사업용","licenseNo":"12-015951","licenseIssued":"2025-07-17","limitB787":"","limitOther":"B737","eptaGrade":"4","epta":"2028-03-01","eptaPeriod":"5년","medicalIssued":"2025-10-15","medical":"2026-10-31","radioIssued":"2023-02-07","radio":"2028-02-06"},{"role":"부기장","name":"정현우","empNo":"P263018","passportNo":"M731X9645","lastNameEn":"JOUNG","firstNameEn":"HYEONWOO","passportIssued":"2024-01-04","passport":"2034-01-04","usVisaCD":"X","usVisaB1B2":"X","usVisaIssued":"","usVisa":"","licenseType":"사업용","licenseNo":"12-015839","licenseIssued":"2025-10-28","limitB787":"","limitOther":"C525","eptaGrade":"4","epta":"2028-08-22","eptaPeriod":"6년","medicalIssued":"2025-10-31","medical":"2026-10-31","radioIssued":"2024-04-12","radio":"2029-04-11"},{"role":"부기장","name":"최경민","empNo":"P263019","passportNo":"M56939050","lastNameEn":"CHOI","firstNameEn":"KYUNGMIN","passportIssued":"2019-08-14","passport":"2029-08-14","usVisaCD":"X","usVisaB1B2":"X","usVisaIssued":"","usVisa":"","licenseType":"사업용","licenseNo":"12-014548","licenseIssued":"2025-10-14","limitB787":"","limitOther":"B737","eptaGrade":"4","epta":"2027-02-28","eptaPeriod":"7년","medicalIssued":"2025-09-08","medical":"2026-09-30","radioIssued":"2026-02-10","radio":"2031-02-09"},{"role":"부기장","name":"최성원","empNo":"P263020","passportNo":"M92311460","lastNameEn":"CHOI","firstNameEn":"SEONG WON","passportIssued":"2019-09-18","passport":"2029-09-18","usVisaCD":"X","usVisaB1B2":"X","usVisaIssued":"","usVisa":"","licenseType":"사업용","licenseNo":"12-016090","licenseIssued":"2025-06-02","limitB787":"","limitOther":"B737","eptaGrade":"5","epta":"2030-05-31","eptaPeriod":"8년","medicalIssued":"2026-02-11","medical":"2027-02-28","radioIssued":"2025-10-26","radio":"2030-10-25"},{"role":"부기장","name":"한유경","empNo":"P263021","passportNo":"M64774837","lastNameEn":"HAN","firstNameEn":"YUKYOUNG","passportIssued":"2020-09-08","passport":"2030-09-08","usVisaCD":"X","usVisaB1B2":"X","usVisaIssued":"","usVisa":"","licenseType":"사업용","licenseNo":"12-016373","licenseIssued":"2024-12-12","limitB787":"","limitOther":"B737","eptaGrade":"4","epta":"2027-12-09","eptaPeriod":"9년","medicalIssued":"2026-02-02","medical":"2027-02-28","radioIssued":"2024-08-08","radio":"2029-08-07"},{"role":"부기장","name":"김도현","empNo":"P263025","passportNo":"M105L0423","lastNameEn":"KIM","firstNameEn":"DOHYUN","passportIssued":"2023-07-18","passport":"2033-07-18","licenseNo":"12-016135","licenseIssued":"2025-02-17","licenseType":"사업용","epta":"2027-11-06","eptaGrade":"4","eptaPeriod":"1년","medicalIssued":"2026-06-02","medical":"2027-06-30","radioIssued":"2025-01-23","radio":"2030-01-22","usVisaIssued":"","usVisa":"","usVisaCD":"X","usVisaB1B2":"X","limitB787":"","limitOther":""},{"role":"부기장","name":"김민규","empNo":"P263026","passportNo":"M71178837","lastNameEn":"KIM","firstNameEn":"MINGYU","passportIssued":"2019-03-22","passport":"2029-03-22","licenseNo":"12-016789","licenseIssued":"2026-06-04","licenseType":"사업용","epta":"2029-02-03","eptaGrade":"4","eptaPeriod":"1년","medicalIssued":"2026-05-28","medical":"2027-05-31","radioIssued":"2024-09-11","radio":"2029-09-10","usVisaIssued":"","usVisa":"","usVisaCD":"X","usVisaB1B2":"X","limitB787":"","limitOther":""},{"role":"부기장","name":"맹준수","empNo":"P263027","passportNo":"M97043387","lastNameEn":"MAENG","firstNameEn":"JUN-SOO","passportIssued":"2019-12-30","passport":"2029-12-30","licenseNo":"12-016831","licenseIssued":"2025-09-24","licenseType":"사업용","epta":"2028-06-28","eptaGrade":"4","eptaPeriod":"1년","medicalIssued":"2026-06-11","medical":"2027-06-30","radioIssued":"2025-10-28","radio":"2030-10-27","usVisaIssued":"","usVisa":"","usVisaCD":"X","usVisaB1B2":"X","limitB787":"","limitOther":""},{"role":"부기장","name":"박강재","empNo":"P263028","passportNo":"M86725364","lastNameEn":"PARK","firstNameEn":"KANG JAE","passportIssued":"2018-04-20","passport":"2028-04-20","licenseNo":"12-015161","licenseIssued":"2024-11-18","licenseType":"사업용","epta":"2027-09-06","eptaGrade":"4","eptaPeriod":"1년","medicalIssued":"2026-06-08","medical":"2027-06-30","radioIssued":"2023-01-18","radio":"2028-01-17","usVisaIssued":"","usVisa":"","usVisaCD":"X","usVisaB1B2":"X","limitB787":"","limitOther":""},{"role":"부기장","name":"백성민","empNo":"P263029","passportNo":"M166J9892","lastNameEn":"BAEK","firstNameEn":"SEONGMIN","passportIssued":"2024-11-11","passport":"2034-11-11","licenseNo":"12-016625","licenseIssued":"2026-03-16","licenseType":"사업용","epta":"2028-05-20","eptaGrade":"4","eptaPeriod":"1년","medicalIssued":"2026-06-04","medical":"2027-06-30","radioIssued":"2023-02-23","radio":"2028-02-22","usVisaIssued":"","usVisa":"","usVisaCD":"X","usVisaB1B2":"X","limitB787":"","limitOther":""},{"role":"부기장","name":"손성호","empNo":"P263030","passportNo":"M88312922","lastNameEn":"SON","firstNameEn":"SEONGHO","passportIssued":"2019-11-11","passport":"2029-11-19","licenseNo":"12-016217","licenseIssued":"2025-07-29","licenseType":"사업용","epta":"2027-04-01","eptaGrade":"4","eptaPeriod":"1년","medicalIssued":"2026-03-17","medical":"2027-03-31","radioIssued":"2025-10-27","radio":"2030-10-26","usVisaIssued":"","usVisa":"","usVisaCD":"X","usVisaB1B2":"X","limitB787":"","limitOther":""},{"role":"부기장","name":"오형주","empNo":"P263031","passportNo":"M610V0250","lastNameEn":"OH","firstNameEn":"HYEONGJU","passportIssued":"2022-07-11","passport":"2032-07-11","licenseNo":"12-015307","licenseIssued":"2026-03-16","licenseType":"사업용","epta":"2028-08-07","eptaGrade":"4","eptaPeriod":"1년","medicalIssued":"2026-05-26","medical":"2027-05-31","radioIssued":"2025-09-07","radio":"2030-09-06","usVisaIssued":"","usVisa":"","usVisaCD":"X","usVisaB1B2":"X","limitB787":"","limitOther":""},{"role":"부기장","name":"주수영","empNo":"P263032","passportNo":"M507L2415","lastNameEn":"JOO","firstNameEn":"SOOYOUNG","passportIssued":"2022-09-15","passport":"2032-09-15","licenseNo":"12-016468","licenseIssued":"2026-01-19","licenseType":"사업용","epta":"2028-04-23","eptaGrade":"4","eptaPeriod":"1년","medicalIssued":"2026-06-02","medical":"2027-06-30","radioIssued":"2024-10-16","radio":"2029-10-15","usVisaIssued":"","usVisa":"","usVisaCD":"X","usVisaB1B2":"X","limitB787":"","limitOther":""},{"role":"부기장","name":"한우섭","empNo":"P263033","passportNo":"M588K8475","lastNameEn":"HAN","firstNameEn":"WOOSEOB","passportIssued":"2024-04-18","passport":"2034-04-18","licenseNo":"12-016146","licenseIssued":"2024-06-10","licenseType":"사업용","epta":"2027-07-22","eptaGrade":"4","eptaPeriod":"1년","medicalIssued":"2026-01-27","medical":"2027-01-31","radioIssued":"2026-06-03","radio":"2031-06-02","usVisaIssued":"","usVisa":"","usVisaCD":"X","usVisaB1B2":"X","limitB787":"","limitOther":""},{"role":"부기장","name":"한준희","empNo":"P263034","passportNo":"M176B0625","lastNameEn":"HAN","firstNameEn":"JOON HEE","passportIssued":"2023-01-11","passport":"2033-01-11","licenseNo":"12-016792","licenseIssued":"2026-02-24","licenseType":"사업용","epta":"2028-12-20","eptaGrade":"4","eptaPeriod":"1년","medicalIssued":"2026-05-27","medical":"2027-05-31","radioIssued":"2023-03-22","radio":"2028-03-21","usVisaIssued":"","usVisa":"","usVisaCD":"X","usVisaB1B2":"X","limitB787":"","limitOther":""}];
+
+    const state = {
+      crew: createBuiltinCrew(),
+      progress: {},
+      renewals: {},
+      deletedEmpNos: new Set(),
+      source: "기본 명단 2026-05",
+      today: startOfDay(new Date()),
+      sort: "notice"
+    };
+    const $ = (id) => document.getElementById(id);
+
+    setupAuth();
+
+    function setupAuth() {
+      $("lockForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const password = $("lockPassword").value;
+        const ok = await verifyPassword(password);
+        if (!ok) {
+          $("lockError").textContent = "Password does not match.";
+          $("lockPassword").select();
+          return;
+        }
+        localStorage.setItem(AUTH_KEY, "1");
+        unlockApp();
+      });
+
+      if (localStorage.getItem(AUTH_KEY) === "1") unlockApp();
+    }
+
+    async function verifyPassword(password) {
+      const bytes = new TextEncoder().encode(password);
+      const digest = await crypto.subtle.digest("SHA-256", bytes);
+      return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("") === PASSWORD_HASH;
+    }
+
+    function unlockApp() {
+      document.body.classList.remove("locked");
+      startApp();
+    }
+
+    function lockApp() {
+      localStorage.removeItem(AUTH_KEY);
+      document.body.classList.add("locked");
+      $("lockPassword").value = "";
+      $("lockError").textContent = "";
+      $("lockPassword").focus();
+    }
+
+    function startApp() {
+      if (startApp.started) return;
+      startApp.started = true;
+      loadStore();
+      bindEvents();
+      render();
+      initCloudStore();
+    }
+
+
+    function bindEvents() {
+      ["search", "roleFilter", "certFilter", "statusFilter", "monthFilter", "horizon"].forEach((id) => $(id).addEventListener("input", render));
+      $("restoreInput").addEventListener("change", () => $("restoreInput").files[0] && restoreBackup($("restoreInput").files[0]));
+      $("backupBtn").addEventListener("click", downloadBackup);
+      $("csvBtn").addEventListener("click", downloadCsv);
+      $("resetBtn").addEventListener("click", resetStore);
+      $("xlsxBtn").addEventListener("click", downloadAllXlsx);
+      $("addCrewBtn").addEventListener("click", openAddCrewModal);
+      $("editQualBtn").addEventListener("click", openEditQualModal);
+      $("logoutBtn").addEventListener("click", lockApp);
+      $("cancelCrewBtn").addEventListener("click", closeAddCrewModal);
+      $("cancelCrewBtn2").addEventListener("click", closeAddCrewModal);
+      $("saveCrewBtn").addEventListener("click", saveNewCrew);
+      document.getElementById("addCrewModal").addEventListener("click", (e) => {
+        if (e.target.id === "addCrewModal") closeAddCrewModal();
+      });
+      $("cancelQualBtn").addEventListener("click", closeEditQualModal);
+      $("cancelQualBtn2").addEventListener("click", closeEditQualModal);
+      $("saveQualBtn").addEventListener("click", saveExistingQualification);
+      $("eq_crewSearch").addEventListener("input", filterExistingCrewOptions);
+      $("eq_crew").addEventListener("change", refreshExistingQualificationForm);
+      $("eq_cert").addEventListener("change", refreshExistingQualificationForm);
+      document.getElementById("editQualModal").addEventListener("click", (e) => {
+        if (e.target.id === "editQualModal") closeEditQualModal();
+      });
+      document.querySelectorAll(".tab").forEach((btn) => btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        state.sort = btn.dataset.sort;
+        render();
+      }));
+    }
+
+    function loadStore() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
+        applyStoreData(saved);
+      } catch {
+        state.deletedEmpNos = new Set();
+        state.crew = createBuiltinCrew();
+        state.progress = {};
+        state.renewals = {};
+      }
+    }
+
+    function saveStore() {
+      const data = buildStoreData();
+      localStorage.setItem(STORE_KEY, JSON.stringify(data));
+      saveCloudStore(data);
+    }
+
+    function buildStoreData() {
+      const builtinMap = new Map(createBuiltinCrew().map(p => [p.empNo, p]));
+      const extraCrew = state.crew.filter(p => {
+        const orig = builtinMap.get(p.empNo);
+        return !orig || JSON.stringify(orig) !== JSON.stringify(p);
+      });
+      return {
+        progress: state.progress,
+        renewals: state.renewals,
+        source: state.source,
+        deletedEmpNos: [...state.deletedEmpNos],
+        extraCrew,
+        savedAt: new Date().toISOString()
+      };
+    }
+
+    function applyStoreData(saved = {}) {
+      state.deletedEmpNos = new Set(saved.deletedEmpNos || []);
+      const builtin = createBuiltinCrew().filter(p => !state.deletedEmpNos.has(p.empNo));
+      const extraCrew = saved.extraCrew || [];
+      const merged = builtin.map(p => {
+        const override = extraCrew.find(e => e.empNo === p.empNo);
+        return override ? { ...p, ...override } : p;
+      });
+      const builtinNos = new Set(builtin.map(p => p.empNo));
+      const newOnly = extraCrew.filter(e => !builtinNos.has(e.empNo));
+      state.crew = [...merged, ...newOnly];
+      state.progress = saved.progress || {};
+      state.renewals = saved.renewals || {};
+      state.source = saved.source || "기본 명단 2026-05";
+    }
+
+    function isFirebaseConfigured() {
+      return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId && FIREBASE_CONFIG.appId;
+    }
+
+    function initCloudStore() {
+      if (!isFirebaseConfigured()) {
+        toast("Firebase 설정값을 넣으면 공용 DB 저장이 켜집니다. 현재는 이 브라우저에만 저장됩니다.");
+        return;
+      }
+      if (!window.firebase || !firebase.firestore) {
+        toast("Firebase 라이브러리를 불러오지 못했습니다. 현재는 이 브라우저에만 저장됩니다.");
+        return;
+      }
+      try {
+        const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
+        firestoreDb = firebase.firestore(app);
+        firestoreDb.doc(FIRESTORE_DOC_PATH).onSnapshot((snapshot) => {
+          if (!snapshot.exists) {
+            saveCloudStore(buildStoreData());
+            return;
+          }
+          isApplyingRemoteStore = true;
+          applyStoreData(snapshot.data());
+          localStorage.setItem(STORE_KEY, JSON.stringify(buildStoreData()));
+          render();
+          isApplyingRemoteStore = false;
+        }, () => {
+          toast("공용 DB 연결을 확인하지 못했습니다. 네트워크 또는 Firebase 설정을 확인해 주세요.");
+        });
+      } catch {
+        toast("Firebase 설정을 확인해 주세요. 현재는 이 브라우저에만 저장됩니다.");
+      }
+    }
+
+    function saveCloudStore(data) {
+      if (!firestoreDb || isApplyingRemoteStore) return;
+      firestoreDb.doc(FIRESTORE_DOC_PATH).set(data).catch(() => {
+        toast("공용 DB 저장에 실패했습니다. 네트워크 또는 Firebase 권한을 확인해 주세요.");
+      });
+    }
+
+    function tasks() {
+      return state.crew.flatMap((person) => CERTS.map((cert) => {
+      const baseKey = `${person.empNo || person.name}|${cert.key}`;
+      const renewal = state.renewals[baseKey] || {};
+      // renewal.expiryDate 가 있으면 항상 갱신된 만료일 우선 사용 (일괄 반영)
+      // 직접 필드명(내장/엑셀 직원) 또는 dates/values 레거시 구조 모두 지원
+      const rawDue = person[cert.key] !== undefined ? person[cert.key]
+                   : (person.dates ? person.dates[cert.key]
+                   : (person.values ? person.values[cert.dueCol] : ''));
+      const due = parseDate(renewal.expiryDate || rawDue);
+      if (!due) return null;
+      const notice = noticeDate(due, cert);
+        const key = `${baseKey}|${dateKey(due)}`;
+        const progress = state.progress[key] || {};
+        const allDone = isComplete(progress, cert);
+        return { ...person, cert, due, notice, key, baseKey, renewal, progress, allDone };
+      }).filter(Boolean));
+    }
+
+    function isComplete(progress, cert) {
+      return !!progress.need
+        && !!progress.notified
+        && (!cert.needsSchedule || !!progress.scheduled)
+        && (!cert.needsRefund || !!progress.refunded)
+        && !!progress.newIssued
+        && !!progress.newExpiry
+        && !!progress.renewed;
+    }
+
+    function filteredTasks() {
+      const q = norm($("search").value);
+      const role = $("roleFilter").value;
+      const cert = $("certFilter").value;
+      const status = $("statusFilter").value;
+      const view = $("monthFilter").value;
+      const horizonDays = Number($("horizon").value) || 9999;
+      const until = addDays(state.today, horizonDays);
+      const currentStart = monthStart(state.today);
+      const nextStart = addMonths(currentStart, 1);
+      let list = tasks().filter((t) => {
+        if (role && t.role !== role) return false;
+        if (cert && t.cert.key !== cert) return false;
+        if (q && !norm([t.name, t.empNo, t.role, t.cert.label].join(" ")).includes(q)) return false;
+        if (view === "overdue" && (t.allDone || t.notice >= currentStart)) return false;
+        if (view === "currentPlusOverdue") {
+          const previousOpen = !t.allDone && t.notice < currentStart;
+          const currentMonth = t.notice >= currentStart && t.notice < nextStart;
+          if (!previousOpen && !currentMonth) return false;
+        }
+        if (view.startsWith("month:")) {
+          if (monthKey(t.notice) !== view.slice(6)) return false;
+        }
+        if (view === "all" && t.notice > until) return false;
+        // 처리 상태 필터
+        if (status === "unprocessed" && t.allDone) return false;
+        if (status === "done" && !t.allDone) return false;
+        // status === "all" → 모두 통과
+        return true;
+      });
+      list.sort((a, b) => {
+        if (state.sort === "due") return a.due - b.due || a.name.localeCompare(b.name, "ko");
+        if (state.sort === "name") return a.name.localeCompare(b.name, "ko") || a.due - b.due;
+        return a.notice - b.notice || a.due - b.due;
+      });
+      return list;
+    }
+
+    function render() {
+      renderFilters();
+      renderKpis();
+      renderRows();
+      $("sourceInfo").textContent = `${state.source} 기준 ${state.crew.length.toLocaleString()}명 저장됨. 체크와 비고는 이 브라우저에 누적 저장됩니다.`;
+    }
+
+    function renderFilters() {
+      const certSelect = $("certFilter");
+      if (certSelect.options.length === 1) {
+        CERTS.forEach((cert) => certSelect.add(new Option(cert.label, cert.key)));
+      }
+      const monthSelect = $("monthFilter");
+      const current = monthSelect.value || "currentPlusOverdue";
+      const months = [...new Set(tasks().map((t) => monthKey(t.notice)).filter(Boolean))].sort();
+      monthSelect.innerHTML = [
+        `<option value="currentPlusOverdue">이번달 + 이전 미처리</option>`,
+        `<option value="overdue">이전 미처리만</option>`,
+        ...months.map((month) => `<option value="month:${month}">${formatMonthLabel(month)}</option>`),
+        `<option value="all">전체</option>`
+      ].join("");
+      monthSelect.value = [...monthSelect.options].some((option) => option.value === current) ? current : "currentPlusOverdue";
+    }
+
+    function renderKpis() {
+      const currentStart = monthStart(state.today);
+      const nextStart = addMonths(currentStart, 1);
+      const currentMonthTasks = tasks().filter((t) => t.notice >= currentStart && t.notice < nextStart);
+      const active = currentMonthTasks.filter((t) => !t.allDone);
+      const late = active.filter((t) => t.notice <= state.today);
+      const done = currentMonthTasks.filter((t) => t.allDone);
+      const cap = state.crew.filter((p) => p.role === "기장").length;
+      const fo = state.crew.filter((p) => p.role === "부기장").length;
+      const monthLabel = formatMonthLabel(monthKey(state.today));
+      $("kpis").innerHTML = [
+        kpi("총원", `${state.crew.length.toLocaleString()}명`, `기장 ${cap} / 부기장 ${fo}`),
+        kpi("이번달 진행 중", `${active.length.toLocaleString()}건`, `${monthLabel} 미완료 건`),
+        kpi("이번달 안내필요", `${late.length.toLocaleString()}건`, `오늘 기준 ${formatDate(state.today)}`),
+        kpi("이번달 갱신 완료", `${done.length.toLocaleString()}건`, `${monthLabel} 완료 처리 건`)
+      ].join("");
+    }
+
+    function kpi(label, value, note) {
+      return `<div class="kpi"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(value)}</div><div class="note">${escapeHtml(note)}</div></div>`;
+    }
+
+    function renderRows() {
+      const list = filteredTasks();
+      $("tableTitle").textContent = `${selectedViewLabel()} ${list.length.toLocaleString()}건`;
+      if (!state.crew.length) {
+        $("rows").innerHTML = `<tr><td colspan="12" class="empty">기본 명단을 읽지 못했습니다.</td></tr>`;
+        return;
+      }
+      if (!list.length) {
+        $("rows").innerHTML = `<tr><td colspan="12" class="empty">조건에 맞는 대상이 없습니다.</td></tr>`;
+        return;
+      }
+      $("rows").innerHTML = list.map((t) => {
+        const cls = t.allDone ? "done" : (t.progress.notified ? "wait" : (t.notice <= state.today ? "late" : "need"));
+        const label = t.allDone ? "갱신 완료" : (t.progress.notified ? "안내 완료" : (t.notice <= state.today ? "안내필요" : "예정"));
+        return `<tr>
+          <td><span class="pill ${cls}">${label}</span></td>
+          <td>${escapeHtml(t.role)}</td>
+          <td class="crew-name"><strong>${escapeHtml(t.name)}</strong></td>
+          <td>${escapeHtml(t.empNo)}</td>
+          <td>${escapeHtml(t.cert.label)}</td>
+          <td><span class="small">${escapeHtml(t.cert.guide)}</span></td>
+          <td class="due">${formatDate(t.notice)}</td>
+          <td class="due">${formatDate(t.due)}</td>
+          <td>${progressCell(t)}</td>
+          <td>${renewalCell(t)}</td>
+          <td><textarea data-key="${escapeAttr(t.key)}" data-field="note" placeholder="비고">${escapeHtml(t.progress.note || "")}</textarea></td>
+          <td><button class="danger" data-empno="${escapeAttr(t.empNo)}" data-name="${escapeAttr(t.name)}" onclick="deleteCrew(this)">삭제</button></td>
+        </tr>`;
+      }).join("");
+      document.querySelectorAll("input[data-field], textarea[data-field]").forEach((el) => {
+        if (el.type === "date") {
+          el.addEventListener("change", updateProgress); // 날짜 필드는 포커스 벗어날 때만
+        } else {
+          el.addEventListener("input", updateProgress);
+          el.addEventListener("change", updateProgress);
+        }
+      });
+    }
+
+    function progressCell(task) {
+      const steps = [
+        checkStep(task.key, "need", "안내 대상 확인", task.progress.need),
+        checkStep(task.key, "notified", "승무원 안내 완료", task.progress.notified)
+      ];
+      if (task.cert.needsSchedule) {
+        steps.push(checkStep(task.key, "scheduled", "스케줄 반영 완료", task.progress.scheduled));
+      }
+      if (task.cert.needsRefund) {
+        steps.push(checkStep(task.key, "refunded", "환급처리 완료", task.progress.refunded));
+      }
+      steps.push(checkStep(task.key, "renewed", "자격 갱신 완료", task.progress.renewed));
+      return `<div class="progress-steps steps-${steps.length}">
+        ${steps.join("")}
+      </div>`;
+    }
+
+    function renewalCell(task) {
+      const issued = task.progress.newIssued || "";
+      const expiry = task.progress.newExpiry || "";
+      const applied = task.renewal && task.renewal.appliedAt
+        ? `<div class="renewal-applied">최근 반영: ${escapeHtml(task.renewal.appliedAt)}</div>`
+        : "";
+      const warning = task.progress.renewalWarning
+        ? `<div class="renewal-warning">갱신일과 새 만료일을 먼저 입력해 주세요.</div>`
+        : "";
+      return `<div class="renewal-box">
+        <span>갱신일</span>
+        <input type="date" data-key="${escapeAttr(task.key)}" data-field="newIssued" value="${escapeAttr(issued)}" required>
+        <span>새 만료일</span>
+        <input type="date" data-key="${escapeAttr(task.key)}" data-field="newExpiry" value="${escapeAttr(expiry)}" required>
+        <div class="renewal-applied">갱신일과 새 만료일 입력 시 자동 반영</div>
+        ${warning}
+        ${applied}
+      </div>`;
+    }
+
+    function checkStep(key, field, label, checked) {
+      return `<label class="step-check ${checked ? "done" : ""}">
+        <input type="checkbox" data-key="${escapeAttr(key)}" data-field="${field}" ${checked ? "checked" : ""}>
+        <span>${escapeHtml(label)}</span>
+      </label>`;
+    }
+
+    function updateProgress(event) {
+      const el = event.currentTarget;
+      const key = el.dataset.key;
+      const field = el.dataset.field;
+      state.progress[key] = state.progress[key] || {};
+      state.progress[key][field] = el.type === "checkbox" ? el.checked : el.value;
+      // 날짜 입력은 임시 저장만 — 다음 주기 반영은 "자격 갱신 완료" 체크박스 시에만 처리
+      if (el.type === "checkbox") {
+        if (field === "renewed" && el.checked) {
+          // 갱신일·만료일 미입력 시 차단
+          if (!hasRenewalDates(state.progress[key])) {
+            state.progress[key].renewed = false;
+            state.progress[key].renewalWarning = true;
+            el.checked = false;
+            delete state.progress[key].completedAt;
+            saveStore();
+            renderKpis();
+            renderRows();
+            toast("갱신일과 새 만료일을 입력해야 자격 갱신 완료로 체크할 수 있습니다.");
+            return;
+          }
+          // 모든 단계 완료 시 비로소 다음 주기 반영
+          const task = tasks().find((item) => item.key === key);
+          if (task && isComplete(state.progress[key], task.cert)) {
+            const progress = state.progress[key];
+            const parsedIssue = parseDate(progress.newIssued);
+            const parsedExpiry = parseDate(progress.newExpiry);
+            if (parsedIssue && parsedExpiry) {
+              const newKey = `${task.baseKey}|${dateKey(parsedExpiry)}`;
+              state.renewals[task.baseKey] = {
+                issueDate: formatDate(parsedIssue),
+                expiryDate: formatDate(parsedExpiry),
+                previousExpiryDate: formatDate(task.due),
+                appliedAt: formatDate(state.today)
+              };
+              state.progress[key].completedAt = progress.completedAt || formatDate(state.today);
+              if (newKey !== key) {
+                state.progress[newKey] = state.progress[newKey] || {};
+              }
+              saveStore();
+              render();
+              toast(`${task.name} ${task.cert.label} 갱신 완료 반영됐습니다.`);
+              return;
+            }
+          }
+          // 다른 단계 미완료 — renewed 저장만, 다음 주기 미반영
+          delete state.progress[key].completedAt;
+        } else {
+          const task = tasks().find((item) => item.key === key);
+          if (task && isComplete(state.progress[key], task.cert)) {
+            state.progress[key].completedAt = state.progress[key].completedAt || formatDate(state.today);
+          } else {
+            delete state.progress[key].completedAt;
+          }
+        }
+      }
+      saveStore();
+      renderKpis();
+      if (el.type === "checkbox") renderRows();
+    }
+
+    function hasRenewalDates(progress) {
+      return !!parseDate(progress.newIssued) && !!parseDate(progress.newExpiry);
+    }
+
+    function applyRenewal(button) {
+      const key = button.dataset.key;
+      const task = tasks().find((item) => item.key === key);
+      if (!task) return;
+      const progress = state.progress[key] || {};
+      const issueDate = progress.newIssued || "";
+      const expiryDate = progress.newExpiry || "";
+      const parsedIssue = parseDate(issueDate);
+      const parsedExpiry = parseDate(expiryDate);
+      if (!parsedIssue) {
+        progress.renewalWarning = true;
+        state.progress[key] = progress;
+        saveStore();
+        renderRows();
+        toast("갱신일을 입력해 주세요.");
+        return;
+      }
+      if (!parsedExpiry) {
+        progress.renewalWarning = true;
+        state.progress[key] = progress;
+        saveStore();
+        renderRows();
+        toast("새 만료일을 입력해 주세요.");
+        return;
+      }
+      delete progress.renewalWarning;
+      const newKey = `${task.baseKey}|${dateKey(parsedExpiry)}`;
+      state.renewals[task.baseKey] = {
+             issueDate: formatDate(parsedIssue),
+        expiryDate: formatDate(parsedExpiry),
+        previousExpiryDate: formatDate(task.due),
+        appliedAt: formatDate(state.today)
+      };
+      // 이전 주기 progress 완료 마킹
+      state.progress[key] = {
+        ...progress,
+        renewed: true,
+        completedAt: progress.completedAt || formatDate(state.today)
+      };
+      // 새 만료일 기반 키로 다음 주기 progress 초기화 (중복 방지)
+      if (newKey !== key) {
+        state.progress[newKey] = state.progress[newKey] || {};
+      }
+      saveStore();
+      render();
+      toast(`${task.name} ${task.cert.label} 새 만료일을 반영했습니다.`);
+    }
+
+    function openEditQualModal() {
+      $("eq_crewSearch").value = "";
+      fillExistingQualificationOptions();
+      document.getElementById("editQualModal").classList.add("open");
+      refreshExistingQualificationForm();
+    }
+
+    function closeEditQualModal() {
+      document.getElementById("editQualModal").classList.remove("open");
+    }
+
+    function fillExistingQualificationOptions() {
+      const certSelect = $("eq_cert");
+      filterExistingCrewOptions();
+      if (!certSelect.options.length) {
+        CERTS.forEach((cert) => certSelect.add(new Option(cert.label, cert.key)));
+      }
+      $("eq_issued").value = "";
+      $("eq_expiry").value = "";
+      $("eq_note").value = "";
+    }
+
+    function filterExistingCrewOptions() {
+      const crewSelect = $("eq_crew");
+      const q = norm($("eq_crewSearch").value);
+      const previous = crewSelect.value;
+      const matches = state.crew
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name, "ko") || a.empNo.localeCompare(b.empNo))
+        .filter((person) => !q || norm([person.name, person.empNo, person.role].join(" ")).includes(q));
+      crewSelect.innerHTML = matches.length
+        ? matches.map((person) => `<option value="${escapeAttr(person.empNo || person.name)}">${escapeHtml(person.name)} (${escapeHtml(person.empNo || "-")}) · ${escapeHtml(person.role)}</option>`).join("")
+        : `<option value="">검색 결과 없음</option>`;
+      if (matches.some((person) => (person.empNo || person.name) === previous)) {
+        crewSelect.value = previous;
+      } else if (matches.length === 1) {
+        crewSelect.value = matches[0].empNo || matches[0].name;
+      }
+      refreshExistingQualificationForm();
+    }
+
+    function refreshExistingQualificationForm() {
+      const person = selectedExistingPerson();
+      const cert = CERTS.find((item) => item.key === $("eq_cert").value);
+      if (!person || !cert) {
+        $("eq_currentExpiry").value = "";
+        $("eq_issued").value = "";
+        $("eq_expiry").value = "";
+        $("eq_note").value = "";
+        return;
+      }
+      const baseKey = `${person.empNo || person.name}|${cert.key}`;
+      const renewal = state.renewals[baseKey] || {};
+      const currentExpiry = renewal.expiryDate || (person.dates ? person.dates[cert.key] : "");
+      $("eq_currentExpiry").value = currentExpiry || "미등록";
+      $("eq_issued").value = renewal.issueDate || person[issuedFieldFor(cert.key)] || "";
+      $("eq_expiry").value = renewal.expiryDate || "";
+      $("eq_note").value = renewal.note || "";
+    }
+
+    function selectedExistingPerson() {
+      const value = $("eq_crew").value;
+      return state.crew.find((person) => (person.empNo || person.name) === value);
+    }
+
+    function issuedFieldFor(certKey) {
+      return {
+        medical: "medicalIssued",
+        radio: "radioIssued",
+        passport: "passportIssued",
+        usVisa: "usVisaIssued",
+        epta: ""
+      }[certKey] || "";
+    }
+
+    function saveExistingQualification() {
+      const person = selectedExistingPerson();
+      const cert = CERTS.find((item) => item.key === $("eq_cert").value);
+      if (!person || !cert) {
+        toast("직원과 자격을 선택해 주세요.");
+        return;
+      }
+      const issueDate = $("eq_issued").value;
+      const expiryDate = $("eq_expiry").value;
+      const parsedExpiry = parseDate(expiryDate);
+      if (!parsedExpiry) {
+        toast("새 만료일을 입력해 주세요.");
+        return;
+      }
+      const parsedIssue = parseDate(issueDate);
+      const baseKey = `${person.empNo || person.name}|${cert.key}`;
+      const previousExpiryDate = state.renewals[baseKey]?.expiryDate || (person.dates ? person.dates[cert.key] : "");
+      const note = $("eq_note").value.trim();
+      state.renewals[baseKey] = {
+        issueDate: parsedIssue ? formatDate(parsedIssue) : "",
+        expiryDate: formatDate(parsedExpiry),
+        previousExpiryDate,
+        appliedAt: formatDate(state.today),
+        note,
+        source: "existingQualification"
+      };
+      if (note) {
+        const progressKey = `${baseKey}|${dateKey(parsedExpiry)}`;
+        state.progress[progressKey] = state.progress[progressKey] || {};
+        state.progress[progressKey].note = note;
+      }
+      saveStore();
+      render();
+      closeEditQualModal();
+      toast(`${person.name} ${cert.label} 자격 정보를 저장했습니다.`);
+    }
+
+    function createBuiltinCrew() {
+      return BUILTIN_CREW_DATA.map((row) => ({
+        role: row.role,
+        name: row.name,
+        empNo: row.empNo,
+        passportNo: row.passportNo || "",
+        lastNameEn: row.lastNameEn || "",
+        firstNameEn: row.firstNameEn || "",
+        passportIssued: row.passportIssued || "",
+        usVisaCD: row.usVisaCD || "",
+        usVisaB1B2: row.usVisaB1B2 || "",
+        usVisaIssued: row.usVisaIssued || "",
+        licenseType: row.licenseType || "",
+        licenseNo: row.licenseNo || "",
+        licenseIssued: row.licenseIssued || "",
+        limitB787: row.limitB787 || "",
+        limitOther: row.limitOther || "",
+        eptaGrade: row.eptaGrade || "",
+        eptaPeriod: row.eptaPeriod || "",
+        medicalIssued: row.medicalIssued || "",
+        radioIssued: row.radioIssued || "",
+        dates: {
+          passport: row.passport || "",
+          usVisa: row.usVisa || "",
+          epta: row.epta || "",
+          medical: row.medical || "",
+          radio: row.radio || ""
+        }
+      }));
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let cell = "";
+      let quoted = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (quoted) {
+          if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+          else if (ch === '"') quoted = false;
+          else cell += ch;
+        } else if (ch === '"') quoted = true;
+        else if (ch === ",") { row.push(cell); cell = ""; }
+        else if (ch === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+        else if (ch !== "\r") cell += ch;
+      }
+      row.push(cell);
+      rows.push(row);
+      const headers = rows.shift();
+      return rows
+        .filter((r) => r.some((v) => v !== ""))
+        .map((r) => Object.fromEntries(headers.map((h, i) => [h, r[i] || ""])));
+    }
+
+    function extractCrew(workbook) {
+      const out = [];
+      ["기장", "부기장"].forEach((sheetName) => {
+        const rows = workbook[sheetName] || [];
+        rows.slice(6).forEach((row) => {
+          const name = clean(row[2]);
+          const empNo = clean(row[3]);
+          if (!name || !empNo) return;
+          out.push({ role: sheetName, name, empNo, values: row.map((v) => normalizeCell(v)) });
+        });
+      });
+      return out;
+    }
+
+    async function readXlsx(bytes) {
+      if (!(bytes[0] === 0x50 && bytes[1] === 0x4b)) throw new Error("xlsx 파일만 지원합니다.");
+      const files = await unzip(bytes);
+      const workbookXml = textFile(files, "xl/workbook.xml");
+      const relsXml = textFile(files, "xl/_rels/workbook.xml.rels");
+      const sharedStrings = parseSharedStrings(textFile(files, "xl/sharedStrings.xml"));
+      const relMap = parseWorkbookRels(relsXml);
+      const sheets = parseWorkbookSheets(workbookXml, relMap);
+      const out = {};
+      for (const sheet of sheets) {
+        const xml = textFile(files, normalizeZipPath("xl/" + sheet.target));
+        if (xml) out[sheet.name] = parseSheetXml(xml, sharedStrings);
+      }
+      return out;
+    }
+
+    async function unzip(bytes) {
+      const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      let eocd = -1;
+      for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 66000); i--) {
+        if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+      }
+      if (eocd < 0) throw new Error("zip 디렉터리를 읽지 못했습니다.");
+      const entries = dv.getUint16(eocd + 10, true);
+      let offset = dv.getUint32(eocd + 16, true);
+      const files = new Map();
+      for (let i = 0; i < entries; i++) {
+        if (dv.getUint32(offset, true) !== 0x02014b50) break;
+        const method = dv.getUint16(offset + 10, true);
+        const compressedSize = dv.getUint32(offset + 20, true);
+        const fileNameLength = dv.getUint16(offset + 28, true);
+        const extraLength = dv.getUint16(offset + 30, true);
+        const commentLength = dv.getUint16(offset + 32, true);
+        const localOffset = dv.getUint32(offset + 42, true);
+        const name = decodeUtf8(bytes.slice(offset + 46, offset + 46 + fileNameLength));
+        const localNameLength = dv.getUint16(localOffset + 26, true);
+        const localExtraLength = dv.getUint16(localOffset + 28, true);
+        const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+        const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+        let data;
+        if (method === 0) data = compressed;
+        else if (method === 8) data = await inflateRaw(compressed);
+        else throw new Error(`지원하지 않는 압축 방식입니다: ${method}`);
+        files.set(normalizeZipPath(name), data);
+        offset += 46 + fileNameLength + extraLength + commentLength;
+      }
+      return files;
+    }
+
+    async function inflateRaw(bytes) {
+      if ("DecompressionStream" in window) {
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+        return new Uint8Array(await new Response(stream).arrayBuffer());
+      }
+      return pureInflateRaw(bytes);
+    }
+
+    function pureInflateRaw(bytes) {
+      const reader = new BitReader(bytes);
+      const out = [];
+      let finalBlock = false;
+      while (!finalBlock) {
+        finalBlock = reader.readBits(1) === 1;
+        const type = reader.readBits(2);
+        if (type === 0) {
+          reader.alignByte();
+          const len = reader.readByte() | (reader.readByte() << 8);
+          reader.readByte();
+          reader.readByte();
+          for (let i = 0; i < len; i++) out.push(reader.readByte());
+        } else if (type === 1 || type === 2) {
+          const tables = type === 1 ? fixedHuffmanTables() : dynamicHuffmanTables(reader);
+          inflateCodes(reader, tables.litLen, tables.dist, out);
+        } else {
+          throw new Error("지원하지 않는 deflate 블록 형식입니다.");
+        }
+      }
+      return new Uint8Array(out);
+    }
+
+    class BitReader {
+      constructor(bytes) {
+        this.bytes = bytes;
+        this.pos = 0;
+        this.bitbuf = 0;
+        this.bitcnt = 0;
+      }
+      readBits(count) {
+        while (this.bitcnt < count) {
+          if (this.pos >= this.bytes.length) throw new Error("압축 데이터가 예상보다 짧습니다.");
+          this.bitbuf |= this.bytes[this.pos++] << this.bitcnt;
+          this.bitcnt += 8;
+        }
+        const value = this.bitbuf & ((1 << count) - 1);
+        this.bitbuf >>>= count;
+        this.bitcnt -= count;
+        return value;
+      }
+      readByte() {
+        return this.readBits(8);
+      }
+      alignByte() {
+        this.bitbuf = 0;
+        this.bitcnt = 0;
+      }
+    }
+
+    function fixedHuffmanTables() {
+      const litLengths = Array(288).fill(0);
+      for (let i = 0; i <= 143; i++) litLengths[i] = 8;
+      for (let i = 144; i <= 255; i++) litLengths[i] = 9;
+      for (let i = 256; i <= 279; i++) litLengths[i] = 7;
+      for (let i = 280; i <= 287; i++) litLengths[i] = 8;
+      return { litLen: buildHuffman(litLengths), dist: buildHuffman(Array(32).fill(5)) };
+    }
+
+    function dynamicHuffmanTables(reader) {
+      const hlit = reader.readBits(5) + 257;
+      const hdist = reader.readBits(5) + 1;
+      const hclen = reader.readBits(4) + 4;
+      const order = [16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
+      const codeLenLengths = Array(19).fill(0);
+      for (let i = 0; i < hclen; i++) codeLenLengths[order[i]] = reader.readBits(3);
+      const codeLenTable = buildHuffman(codeLenLengths);
+      const lengths = [];
+      while (lengths.length < hlit + hdist) {
+        const sym = decodeSymbol(reader, codeLenTable);
+        if (sym <= 15) lengths.push(sym);
+        else if (sym === 16) {
+          const repeat = reader.readBits(2) + 3;
+          const previous = lengths[lengths.length - 1] || 0;
+          for (let i = 0; i < repeat; i++) lengths.push(previous);
+        } else if (sym === 17) {
+          const repeat = reader.readBits(3) + 3;
+          for (let i = 0; i < repeat; i++) lengths.push(0);
+        } else if (sym === 18) {
+          const repeat = reader.readBits(7) + 11;
+          for (let i = 0; i < repeat; i++) lengths.push(0);
+        }
+      }
+      return {
+        litLen: buildHuffman(lengths.slice(0, hlit)),
+        dist: buildHuffman(lengths.slice(hlit, hlit + hdist))
+      };
+    }
+
+    function buildHuffman(lengths) {
+      const maxBits = Math.max(...lengths);
+      const blCount = Array(maxBits + 1).fill(0);
+      lengths.forEach((len) => { if (len) blCount[len]++; });
+      const nextCode = Array(maxBits + 1).fill(0);
+      let code = 0;
+      for (let bits = 1; bits <= maxBits; bits++) {
+        code = (code + (blCount[bits - 1] || 0)) << 1;
+        nextCode[bits] = code;
+      }
+      const table = { maxBits, maps: Array.from({ length: maxBits + 1 }, () => new Map()) };
+      lengths.forEach((len, symbol) => {
+        if (!len) return;
+        const canonical = nextCode[len]++;
+        table.maps[len].set(reverseBits(canonical, len), symbol);
+      });
+      return table;
+    }
+
+    function reverseBits(value, length) {
+      let out = 0;
+      for (let i = 0; i < length; i++) {
+        out = (out << 1) | (value & 1);
+        value >>>= 1;
+      }
+      return out;
+    }
+
+    function decodeSymbol(reader, table) {
+      let code = 0;
+      for (let len = 1; len <= table.maxBits; len++) {
+        code |= reader.readBits(1) << (len - 1);
+        if (table.maps[len].has(code)) return table.maps[len].get(code);
+      }
+      throw new Error("deflate 허프만 코드를 해석하지 못했습니다.");
+    }
+
+    function inflateCodes(reader, litLenTable, distTable, out) {
+      const lengthBase = [3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
+      const lengthExtra = [0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
+      const distBase = [1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
+      const distExtra = [0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
+      while (true) {
+        const sym = decodeSymbol(reader, litLenTable);
+        if (sym < 256) out.push(sym);
+        else if (sym === 256) return;
+        else {
+          const index = sym - 257;
+          if (index < 0 || index >= lengthBase.length) throw new Error("deflate 길이 코드가 올바르지 않습니다.");
+          const length = lengthBase[index] + reader.readBits(lengthExtra[index]);
+          const distSym = decodeSymbol(reader, distTable);
+          const distance = distBase[distSym] + reader.readBits(distExtra[distSym]);
+          for (let i = 0; i < length; i++) out.push(out[out.length - distance]);
+        }
+      }
+    }
+
+    function parseWorkbookSheets(xml, relMap) {
+      const doc = parseXml(xml);
+      return [...doc.getElementsByTagName("sheet")].map((node) => {
+        const relId = node.getAttribute("r:id") || node.getAttribute("id");
+        return { name: node.getAttribute("name"), target: relMap.get(relId) };
+      }).filter((s) => s.name && s.target);
+    }
+
+    function parseWorkbookRels(xml) {
+      const doc = parseXml(xml);
+      const map = new Map();
+      [...doc.getElementsByTagName("Relationship")].forEach((node) => map.set(node.getAttribute("Id"), node.getAttribute("Target")));
+      return map;
+    }
+
+    function parseSharedStrings(xml) {
+      if (!xml) return [];
+      const doc = parseXml(xml);
+      return [...doc.getElementsByTagName("si")].map((si) => [...si.getElementsByTagName("t")].map((t) => t.textContent || "").join(""));
+    }
+
+    function parseSheetXml(xml, sharedStrings) {
+      const doc = parseXml(xml);
+      const rows = [];
+      [...doc.getElementsByTagName("c")].forEach((cell) => {
+        const ref = cell.getAttribute("r") || "";
+        const match = ref.match(/^([A-Z]+)(\d+)$/);
+        if (!match) return;
+        const col = colNameToIndex(match[1]);
+        const row = Number(match[2]) - 1;
+        rows[row] = rows[row] || [];
+        rows[row][col] = cellValue(cell, sharedStrings);
+      });
+      return rows.map((row) => {
+        const length = row ? row.length : 0;
+        return Array.from({ length }, (_, i) => row[i] ?? "");
+      });
+    }
+
+    function cellValue(cell, sharedStrings) {
+      const type = cell.getAttribute("t");
+      if (type === "inlineStr") return cell.textContent || "";
+      const v = cell.getElementsByTagName("v")[0]?.textContent ?? "";
+      if (type === "s") return sharedStrings[Number(v)] || "";
+      if (type === "b") return v === "1";
+      if (v !== "" && !Number.isNaN(Number(v))) return excelNumberToValue(Number(v));
+      return v;
+    }
+
+    function excelNumberToValue(n) {
+      // Excel serial: 40000 ~ 75000 covers roughly 2009-09 ~ 2105-05 (valid crew dates)
+      // Serials below 40000 are typically pre-2009 dates or data errors; return as-is
+      if (n >= 40000 && n < 75000) return formatDate(new Date(Date.UTC(1899, 11, 30) + n * 86400000));
+      return n;
+    }
+
+    function parseXml(xml) {
+      return new DOMParser().parseFromString(xml, "application/xml");
+    }
+
+    function textFile(files, path) {
+      const data = files.get(normalizeZipPath(path));
+      return data ? decodeUtf8(data) : "";
+    }
+
+    function normalizeZipPath(path) {
+      const parts = [];
+      path.replace(/\\/g, "/").split("/").forEach((part) => {
+        if (!part || part === ".") return;
+        if (part === "..") parts.pop();
+        else parts.push(part);
+      });
+      return parts.join("/");
+    }
+
+    function decodeUtf8(bytes) {
+      return new TextDecoder("utf-8").decode(bytes);
+    }
+
+    function colNameToIndex(name) {
+      let n = 0;
+      for (const ch of name) n = n * 26 + ch.charCodeAt(0) - 64;
+      return n - 1;
+    }
+
+    function normalizeCell(value) {
+      if (value === null || value === undefined) return "";
+      return value;
+    }
+
+    function downloadBackup() {
+      const data = JSON.stringify(buildStoreData(), null, 2);
+      download(`qualification_dashboard_backup_${dateKey(new Date())}.json`, data, "application/json;charset=utf-8");
+    }
+
+    async function restoreBackup(file) {
+      try {
+        const data = JSON.parse(await file.text());
+        applyStoreData({
+          progress: data.progress || {},
+          renewals: data.renewals || {},
+          source: data.source || "기본 명단 2026-05",
+          deletedEmpNos: data.deletedEmpNos || [],
+          extraCrew: data.extraCrew || []
+        });
+        saveStore();
+        render();
+        toast("백업을 복원했습니다.");
+      } catch {
+        toast("백업 JSON을 읽지 못했습니다.");
+      } finally {
+        $("restoreInput").value = "";
+      }
+    }
+
+    function downloadCsv() {
+      const header = ["상태", "직위", "이름", "사번", "자격", "안내기준", "안내일", "만료일", "안내필요", "안내완료", "스케줄반영", "환급처리", "갱신완료", "새갱신일", "새만료일", "비고"];
+      const lines = [header, ...filteredTasks().map((t) => [
+        t.allDone ? "갱신 완료" : (t.notice <= state.today ? "안내필요" : "예정"),
+        t.role, t.name, t.empNo, t.cert.label, t.cert.guide, formatDate(t.notice), formatDate(t.due),
+        yesNo(t.progress.need),
+        yesNo(t.progress.notified),
+        t.cert.needsSchedule ? yesNo(t.progress.scheduled) : "해당없음",
+        t.cert.needsRefund ? yesNo(t.progress.refunded) : "해당없음",
+        yesNo(t.progress.renewed),
+        t.progress.newIssued || "",
+        t.progress.newExpiry || "",
+        t.progress.note || ""
+      ])].map((row) => row.map(csvEscape).join(","));
+      download(`qualification_dashboard_${dateKey(new Date())}.csv`, "\ufeff" + lines.join("\n"), "text/csv;charset=utf-8");
+    }
+
+    function resetStore() {
+      if (!confirm("저장된 명단, 체크, 비고를 모두 초기화할까요?")) return;
+      localStorage.removeItem(STORE_KEY);
+      state.crew = createBuiltinCrew();
+      state.progress = {};
+      state.renewals = {};
+      state.deletedEmpNos = new Set();
+      state.source = "기본 명단 2026-05";
+      saveStore();
+      render();
+      toast("저장값을 초기화했습니다.");
+    }
+
+    function download(filename, text, type) {
+      const blob = new Blob([text], { type });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function yesNo(value) { return value ? "Y" : ""; }
+    function clean(value) { return String(value ?? "").replace(/\s+/g, " ").trim(); }
+    function norm(value) { return clean(value).toLowerCase().replace(/[\s_\-()]/g, ""); }
+
+    function parseDate(value) {
+      if (!value || value === "영구") return null;
+      if (value instanceof Date) return startOfDay(value);
+      if (typeof value === "number") {
+        // Excel serial number: only treat as date if in plausible crew date range (2009~2105)
+        if (value >= 40000 && value < 75000) return startOfDay(new Date(Date.UTC(1899, 11, 30) + value * 86400000));
+        return null;
+      }
+      const text = clean(value);
+      if (!text || text === "영구") return null;
+      const compact = text.match(/^(\d{4})(\d{2})(\d{2})$/);
+      if (compact) return startOfDay(new Date(Number(compact[1]), Number(compact[2]) - 1, Number(compact[3])));
+      const match = text.match(/(\d{4})[.\-\/년\s]*(\d{1,2})[.\-\/월\s]*(\d{1,2})/);
+      if (match) {
+        const year = Number(match[1]);
+        if (year < 2000) return null; // reject obviously wrong dates (1930s etc.)
+        return startOfDay(new Date(year, Number(match[2]) - 1, Number(match[3])));
+      }
+      const parsed = new Date(text);
+      return Number.isNaN(parsed.getTime()) ? null : startOfDay(parsed);
+    }
+
+    function noticeDate(due, cert) {
+      return new Date(due.getFullYear(), due.getMonth() - cert.noticeMonthsBefore, cert.noticeDay);
+    }
+
+    function addDays(date, days) {
+      const d = new Date(date);
+      d.setDate(d.getDate() + days);
+      return startOfDay(d);
+    }
+
+    function addMonths(date, months) {
+      return startOfDay(new Date(date.getFullYear(), date.getMonth() + months, date.getDate()));
+    }
+
+    function monthStart(date) {
+      return startOfDay(new Date(date.getFullYear(), date.getMonth(), 1));
+    }
+
+    function startOfDay(date) {
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+
+    function formatDate(date) {
+      const d = parseDate(date);
+      if (!d) return "";
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    function dateKey(date) { return formatDate(date).replaceAll("-", ""); }
+    function monthKey(date) { return formatDate(date).slice(0, 7); }
+    function formatMonthLabel(month) {
+      const [year, mon] = month.split("-");
+      return `${year}년 ${Number(mon)}월`;
+    }
+
+    function selectedViewLabel() {
+      const value = $("monthFilter").value;
+      if (value === "currentPlusOverdue") return "이번달 + 이전 미처리";
+      if (value === "overdue") return "이전 미처리";
+      if (value === "all") return "전체 안내 대상";
+      if (value.startsWith("month:")) return `${formatMonthLabel(value.slice(6))} 안내 대상`;
+      return "갱신 안내 대상";
+    }
+    function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[ch])); }
+    function escapeAttr(value) { return escapeHtml(value).replace(/`/g, "&#096;"); }
+    function csvEscape(value) {
+      const text = String(value ?? "");
+      return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    }
+
+    function toast(message) {
+      $("toast").textContent = message;
+      $("toast").classList.add("show");
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => $("toast").classList.remove("show"), 2600);
+    }
+
+    // ---- 전체 명단 엑셀 다운로드 ----
+    function downloadAllXlsx() {
+      if (typeof XLSX === "undefined") { toast("SheetJS 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도하세요."); return; }
+      const headers = ["직위","이름","사번","여권번호","영문성","영문이름","여권발급일","여권만료일","C1/D","B1/B2","미국비자발급일","미국비자만료일","자격증종류","자격번호","자격발급일","한정자격(B787)","한정자격(기타)","EPTA등급","EPTA만료일","EPTA갱신기간","신체검사발급일","신체검사만료일","무선통신사발급일","무선통신사만료일"];
+      const rows = state.crew.map(p => [
+        p.role, p.name, p.empNo, p.passportNo||"", p.lastNameEn||"", p.firstNameEn||"",
+        p.passportIssued||"", p.dates?.passport||"",
+        p.usVisaCD||"", p.usVisaB1B2||"", p.usVisaIssued||"", p.dates?.usVisa||"",
+        p.licenseType||"", p.licenseNo||"", p.licenseIssued||"",
+        p.limitB787||"", p.limitOther||"",
+        p.eptaGrade||"", p.dates?.epta||"", p.eptaPeriod||"",
+        p.medicalIssued||"", p.dates?.medical||"",
+        p.radioIssued||"", p.dates?.radio||""
+      ]);
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      // Column widths
+      ws["!cols"] = headers.map(() => ({ wch: 16 }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "운항승무원_자격관리");
+      XLSX.writeFile(wb, `운항승무원_자격관리_전체_${dateKey(new Date())}.xlsx`);
+      toast("전체 명단 엑셀 다운로드 완료!");
+    }
+
+    // ---- 신규 입사자 추가 ----
+    function openAddCrewModal() {
+      document.getElementById("addCrewModal").classList.add("open");
+      // clear fields
+      ["nw_name","nw_empNo","nw_passportNo","nw_lastNameEn","nw_firstNameEn",
+       "nw_passportIssued","nw_passport","nw_usVisaIssued","nw_usVisa",
+       "nw_licenseNo","nw_limitB787","nw_limitOther","nw_eptaGrade","nw_epta",
+       "nw_medicalIssued","nw_medical","nw_radioIssued","nw_radio"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+    }
+
+    function closeAddCrewModal() {
+      document.getElementById("addCrewModal").classList.remove("open");
+    }
+
+    function saveNewCrew() {
+      const name = document.getElementById("nw_name").value.trim();
+      const empNo = document.getElementById("nw_empNo").value.trim();
+      if (!name || !empNo) { toast("이름과 사번은 필수입니다."); return; }
+      const newPerson = {
+        role: document.getElementById("nw_role").value,
+        name,
+        empNo,
+        passportNo: document.getElementById("nw_passportNo").value,
+        lastNameEn: document.getElementById("nw_lastNameEn").value,
+        firstNameEn: document.getElementById("nw_firstNameEn").value,
+        passportIssued: document.getElementById("nw_passportIssued").value,
+        usVisaCD: document.getElementById("nw_usVisaCD").value,
+        usVisaB1B2: document.getElementById("nw_usVisaB1B2").value,
+        usVisaIssued: document.getElementById("nw_usVisaIssued").value,
+        licenseType: document.getElementById("nw_licenseType").value,
+        licenseNo: document.getElementById("nw_licenseNo").value,
+        licenseIssued: "",
+        limitB787: document.getElementById("nw_limitB787").value,
+        limitOther: document.getElementById("nw_limitOther").value,
+        eptaGrade: document.getElementById("nw_eptaGrade").value,
+        eptaPeriod: "",
+        medicalIssued: document.getElementById("nw_medicalIssued").value,
+        radioIssued: document.getElementById("nw_radioIssued").value,
+        dates: {
+          passport: document.getElementById("nw_passport").value,
+          usVisa: document.getElementById("nw_usVisa").value,
+          epta: document.getElementById("nw_epta").value,
+          medical: document.getElementById("nw_medical").value,
+          radio: document.getElementById("nw_radio").value
+        }
+      };
+      state.crew.push(newPerson);
+      saveStore();
+      render();
+      closeAddCrewModal();
+      toast(`${name} 추가 완료!`);
+    }
+
+    // ---- 직원 삭제 ----
+    function deleteCrew(btn) {
+      const empNo = btn.dataset.empno;
+      const name = btn.dataset.name;
+      if (!confirm(`[${name}] 을(를) 명단에서 삭제할까요?\n삭제 후에는 복구할 수 없습니다.`)) return;
+      state.deletedEmpNos.add(empNo);
+      state.crew = state.crew.filter(p => p.empNo !== empNo);
+      saveStore();
+      render();
+      toast(`${name} 삭제 완료`);
+    }
+
+  </script>
+</body>
+</html>
