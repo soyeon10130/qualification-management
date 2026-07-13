@@ -450,10 +450,10 @@
     textarea { min-width: 180px; min-height: 40px; resize: vertical; font-size: 12.5px; }
     .renewal-box {
       display: grid;
-      grid-template-columns: 72px 170px;
+      grid-template-columns: 72px 134px;
       gap: 6px 8px;
       align-items: center;
-      min-width: 266px;
+      min-width: 230px;
       font-size: 12px;
       color: var(--ap-muted);
     }
@@ -462,40 +462,6 @@
       padding: 5px 7px;
       border-radius: 6px;
       font-size: 12px;
-    }
-
-    /* ── 3-segment date input (YYYY-MM-DD, 자동 이동 방지) ───── */
-    .date3-group {
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      width: 100%;
-    }
-    .date3-group input {
-      width: auto !important;
-      min-width: 0;
-      text-align: center;
-      padding: 6px 2px !important;
-      font-variant-numeric: tabular-nums;
-      font-family: inherit;
-    }
-    .date3-group .date3-y { flex: 1 1 48px; }
-    .date3-group .date3-m,
-    .date3-group .date3-d { flex: 1 1 30px; }
-    .date3-group .date3-sep { color: var(--ap-muted); font-weight: 700; flex: 0 0 auto; }
-    .renewal-box .date3-group input { height: 32px; font-size: 12px; }
-    .modal-grid .date3-group input {
-      border: 1.5px solid var(--ap-line);
-      border-radius: 7px;
-      background: var(--ap-ice);
-      font-size: 13px;
-      padding: 9px 4px !important;
-    }
-    .modal-grid .date3-group input:focus {
-      outline: none;
-      border-color: var(--ap-navy3);
-      background: #fff;
-      box-shadow: 0 0 0 3px rgba(12,35,64,.07);
     }
     .renewal-box button {
       grid-column: 1 / -1;
@@ -962,7 +928,7 @@ function handleCrewExcelImport(e){
   <script>
     const STORE_KEY = "yp-qualification-dashboard-v2";
     const AUTH_KEY = "yp-qualification-dashboard-auth-v1";
-    const PASSWORD_HASH = "3e8e87afe2ba5c524c511443ab429251a0d7f77718f1cc9bc87c77735fe541cc"; // sy.jeong@airpremia.com
+    const PASSWORD = "sy.jeong@airpremia.com";
     const FIREBASE_CONFIG = {
       apiKey: "AIzaSyBaki7dtYU34uA-goO1J1gLl82KMsJfI04",
       authDomain: "flightcrew-qualification-mgr.firebaseapp.com",
@@ -1044,8 +1010,6 @@ function handleCrewExcelImport(e){
 
 
     function bindEvents() {
-      upgradeStaticDateInputs();
-      initDate3Delegation();
       ["search", "roleFilter", "certFilter", "statusFilter", "monthFilter", "horizon"].forEach((id) => $(id).addEventListener("input", render));
       $("restoreInput").addEventListener("change", () => $("restoreInput").files[0] && restoreBackup($("restoreInput").files[0]));
       $("backupBtn").addEventListener("click", downloadBackup);
@@ -1373,9 +1337,9 @@ function handleCrewExcelImport(e){
         : "";
       return `<div class="renewal-box">
         <span>갱신일</span>
-        ${dateInput3Html({ dataKey: task.key, dataField: "newIssued", value: issued, required: true })}
+        <input type="date" data-key="${escapeAttr(task.key)}" data-field="newIssued" value="${escapeAttr(issued)}" required>
         <span>새 만료일</span>
-        ${dateInput3Html({ dataKey: task.key, dataField: "newExpiry", value: expiry, required: true })}
+        <input type="date" data-key="${escapeAttr(task.key)}" data-field="newExpiry" value="${escapeAttr(expiry)}" required>
         <div class="renewal-applied">갱신일과 새 만료일 입력 시 자동 반영</div>
         ${warning}
         ${applied}
@@ -1519,8 +1483,8 @@ function handleCrewExcelImport(e){
       if (!certSelect.options.length) {
         CERTS.forEach((cert) => certSelect.add(new Option(cert.label, cert.key)));
       }
-      setDateInput3Value("eq_issued", "");
-      setDateInput3Value("eq_expiry", "");
+      $("eq_issued").value = "";
+      $("eq_expiry").value = "";
       $("eq_note").value = "";
     }
 
@@ -1548,8 +1512,8 @@ function handleCrewExcelImport(e){
       const cert = CERTS.find((item) => item.key === $("eq_cert").value);
       if (!person || !cert) {
         $("eq_currentExpiry").value = "";
-        setDateInput3Value("eq_issued", "");
-        setDateInput3Value("eq_expiry", "");
+        $("eq_issued").value = "";
+        $("eq_expiry").value = "";
         $("eq_note").value = "";
         return;
       }
@@ -1557,8 +1521,8 @@ function handleCrewExcelImport(e){
       const renewal = state.renewals[baseKey] || {};
       const currentExpiry = renewal.expiryDate || (person.dates ? person.dates[cert.key] : "");
       $("eq_currentExpiry").value = currentExpiry || "미등록";
-      setDateInput3Value("eq_issued", renewal.issueDate || person[issuedFieldFor(cert.key)] || "");
-      setDateInput3Value("eq_expiry", renewal.expiryDate || "");
+      $("eq_issued").value = renewal.issueDate || person[issuedFieldFor(cert.key)] || "";
+      $("eq_expiry").value = renewal.expiryDate || "";
       $("eq_note").value = renewal.note || "";
     }
 
@@ -2044,126 +2008,6 @@ function handleCrewExcelImport(e){
     function clean(value) { return String(value ?? "").replace(/\s+/g, " ").trim(); }
     function norm(value) { return clean(value).toLowerCase().replace(/[\s_\-()]/g, ""); }
 
-    // ── 3-segment 날짜 입력 (YYYY / MM / DD 개별 입력, 자동 이동 방지) ──
-    function dateInput3Html({ id, dataKey, dataField, value, required } = {}) {
-      const parts = String(value || "").split("-");
-      const y = /^\d{4}$/.test(parts[0] || "") ? parts[0] : "";
-      const m = /^\d{1,2}$/.test(parts[1] || "") ? String(Number(parts[1])).padStart(2, "0") : "";
-      const d = /^\d{1,2}$/.test(parts[2] || "") ? String(Number(parts[2])).padStart(2, "0") : "";
-      const idAttr = id ? ` id="${escapeAttr(id)}"` : "";
-      const keyAttr = dataKey != null ? ` data-key="${escapeAttr(dataKey)}"` : "";
-      const fieldAttr = dataField ? ` data-field="${escapeAttr(dataField)}"` : "";
-      const reqAttr = required ? " required" : "";
-      return `<span class="date3-group">
-        <input type="text" inputmode="numeric" pattern="[0-9]*" class="date3-y" maxlength="4" placeholder="YYYY" value="${escapeAttr(y)}" autocomplete="off">
-        <span class="date3-sep">-</span>
-        <input type="text" inputmode="numeric" pattern="[0-9]*" class="date3-m" maxlength="2" placeholder="MM" value="${escapeAttr(m)}" autocomplete="off">
-        <span class="date3-sep">-</span>
-        <input type="text" inputmode="numeric" pattern="[0-9]*" class="date3-d" maxlength="2" placeholder="DD" value="${escapeAttr(d)}" autocomplete="off">
-        <input type="hidden" class="date3-hidden"${idAttr}${keyAttr}${fieldAttr}${reqAttr} value="${escapeAttr(value || "")}">
-      </span>`;
-    }
-
-    function upgradeStaticDateInputs(root) {
-      (root || document).querySelectorAll('input[type="date"]').forEach((oldEl) => {
-        const wrap = document.createElement("span");
-        wrap.innerHTML = dateInput3Html({ id: oldEl.id || "", value: oldEl.value || "", required: oldEl.required });
-        oldEl.replaceWith(wrap.firstElementChild);
-      });
-    }
-
-    function setDateInput3Value(id, value) {
-      const hidden = document.getElementById(id);
-      if (!hidden) return;
-      hidden.value = value || "";
-      const group = hidden.closest(".date3-group");
-      if (!group) return;
-      const parts = String(value || "").split("-");
-      const y = group.querySelector(".date3-y");
-      const m = group.querySelector(".date3-m");
-      const d = group.querySelector(".date3-d");
-      if (y) y.value = /^\d{4}$/.test(parts[0] || "") ? parts[0] : "";
-      if (m) m.value = /^\d{1,2}$/.test(parts[1] || "") ? String(Number(parts[1])).padStart(2, "0") : "";
-      if (d) d.value = /^\d{1,2}$/.test(parts[2] || "") ? String(Number(parts[2])).padStart(2, "0") : "";
-    }
-
-    function date3Compose(group) {
-      const y = group.querySelector(".date3-y");
-      const m = group.querySelector(".date3-m");
-      const d = group.querySelector(".date3-d");
-      const hidden = group.querySelector(".date3-hidden");
-      if (!y || !m || !d || !hidden) return;
-      let composed = "";
-      if (y.value.length === 4 && m.value.length >= 1 && d.value.length >= 1) {
-        const mmN = Number(m.value), ddN = Number(d.value);
-        if (mmN >= 1 && mmN <= 12 && ddN >= 1 && ddN <= 31) {
-          composed = `${y.value}-${String(mmN).padStart(2, "0")}-${String(ddN).padStart(2, "0")}`;
-        }
-      }
-      if (hidden.value !== composed) {
-        hidden.value = composed;
-        hidden.dispatchEvent(new Event("change", { bubbles: true }));
-      }
-    }
-
-    function initDate3Delegation() {
-      document.addEventListener("input", (e) => {
-        const el = e.target;
-        if (!el.classList) return;
-        const isSeg = el.classList.contains("date3-y") || el.classList.contains("date3-m") || el.classList.contains("date3-d");
-        if (!isSeg) return;
-        const max = el.classList.contains("date3-y") ? 4 : 2;
-        el.value = el.value.replace(/\D/g, "").slice(0, max);
-        const group = el.closest(".date3-group");
-        if (!group) return;
-        if (el.value.length === max) {
-          let next = null;
-          if (el.classList.contains("date3-y")) next = group.querySelector(".date3-m");
-          else if (el.classList.contains("date3-m")) next = group.querySelector(".date3-d");
-          if (next) { next.focus(); next.select(); }
-        }
-        date3Compose(group);
-      });
-      document.addEventListener("keydown", (e) => {
-        const el = e.target;
-        if (!el.classList) return;
-        const isSeg = el.classList.contains("date3-y") || el.classList.contains("date3-m") || el.classList.contains("date3-d");
-        if (!isSeg) return;
-        const group = el.closest(".date3-group");
-        if (!group) return;
-        const atStart = el.selectionStart === 0 && el.selectionEnd === 0;
-        if (e.key === "Backspace" && el.value === "" && atStart) {
-          let prev = null;
-          if (el.classList.contains("date3-d")) prev = group.querySelector(".date3-m");
-          else if (el.classList.contains("date3-m")) prev = group.querySelector(".date3-y");
-          if (prev) { e.preventDefault(); prev.focus(); prev.setSelectionRange(prev.value.length, prev.value.length); }
-        } else if (e.key === "ArrowLeft" && atStart) {
-          let prev = null;
-          if (el.classList.contains("date3-d")) prev = group.querySelector(".date3-m");
-          else if (el.classList.contains("date3-m")) prev = group.querySelector(".date3-y");
-          if (prev) { e.preventDefault(); prev.focus(); prev.setSelectionRange(prev.value.length, prev.value.length); }
-        } else if (e.key === "ArrowRight" && el.selectionStart === el.value.length && el.selectionEnd === el.value.length) {
-          let next = null;
-          if (el.classList.contains("date3-y")) next = group.querySelector(".date3-m");
-          else if (el.classList.contains("date3-m")) next = group.querySelector(".date3-d");
-          if (next) { e.preventDefault(); next.focus(); next.setSelectionRange(0, 0); }
-        }
-      });
-      document.addEventListener("blur", (e) => {
-        const el = e.target;
-        if (!el.classList) return;
-        const isMD = el.classList.contains("date3-m") || el.classList.contains("date3-d");
-        if (!isMD || el.value === "") return;
-        const maxN = el.classList.contains("date3-m") ? 12 : 31;
-        let n = Number(el.value);
-        if (n < 1) n = 1;
-        if (n > maxN) n = maxN;
-        el.value = String(n).padStart(2, "0");
-        const group = el.closest(".date3-group");
-        if (group) date3Compose(group);
-      }, true);
-    }
-
     function parseDate(value) {
       if (!value || value === "영구") return null;
       if (value instanceof Date) return startOfDay(value);
@@ -2271,12 +2115,12 @@ function handleCrewExcelImport(e){
       document.getElementById("addCrewModal").classList.add("open");
       // clear fields
       ["nw_name","nw_empNo","nw_passportNo","nw_lastNameEn","nw_firstNameEn",
-       "nw_licenseNo","nw_limitB787","nw_limitOther","nw_eptaGrade"].forEach(id => {
+       "nw_passportIssued","nw_passport","nw_usVisaIssued","nw_usVisa",
+       "nw_licenseNo","nw_limitB787","nw_limitOther","nw_eptaGrade","nw_epta",
+       "nw_medicalIssued","nw_medical","nw_radioIssued","nw_radio"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = "";
       });
-      ["nw_passportIssued","nw_passport","nw_usVisaIssued","nw_usVisa","nw_epta",
-       "nw_medicalIssued","nw_medical","nw_radioIssued","nw_radio"].forEach(id => setDateInput3Value(id, ""));
     }
 
     function closeAddCrewModal() {
