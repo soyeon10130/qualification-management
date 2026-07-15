@@ -980,12 +980,9 @@ function handleCrewExcelImport(e){
       if (localStorage.getItem(AUTH_KEY) === "1") unlockApp();
     }
 
-    async function verifyPassword(password) {
-      const bytes = new TextEncoder().encode(password);
-      const digest = await crypto.subtle.digest("SHA-256", bytes);
-      return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("") === PASSWORD_HASH;
-    }
-
+async function verifyPassword(password) {
+  return password === PASSWORD;
+}
     function unlockApp() {
       document.body.classList.remove("locked");
       startApp();
